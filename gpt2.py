@@ -27,7 +27,7 @@ class GPT2LanguageModel(LanguageModel):
         if model_name == '117M':
             self.model = GPT2LMHeadModel.from_pretrained('gpt2')
         elif model_name == '345M':
-            self.model = GPT2LMHeadModel.from_pretrained(LOCAL_MODEL)
+            self.model = GPT2LMHeadModel.from_pretrained('gpt2-medium')
         else:
             exit("model name not found")
 
