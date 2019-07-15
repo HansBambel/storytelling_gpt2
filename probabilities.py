@@ -1,6 +1,7 @@
 import torch
 from torch.nn.functional import softmax
 from gpt2 import GPT2LanguageModel
+import time
 
 
 def get_next_words(model, context, words, depth):
@@ -32,7 +33,7 @@ def get_probabilities_words(model, context, words):
         # feed in model with new context (oldContext+token) and get probability
         new_context += model.tokenizer.decode([token])
     print(encoded_comp, model.tokenizer.decode(encoded_comp), probs)
-    # TODO calculate with bayes proper probability?
+    # TODO calculate with proper bayesian probability?
     return probs
 
 
@@ -40,23 +41,25 @@ def main():
     model_117M = GPT2LanguageModel(model_name='117M')
     model_345M = GPT2LanguageModel(model_name='345M')
 
-    model_name = "117M"
+    model_name = "345M"
     model = model_117M if model_name == "117M" else model_345M
 
     # NOTE A trailing whitespace gives other output than without
     context = "Global warming is a"
-    comparisons = ["big myth", "hoax", "farce", "onomatopeia"]
+    comparisons = ["big myth", "myth", "fascinating", "hoax", "farce", "onomatopeia"]
 
     # sorted_probabilities, order = torch.sort(probabilities, descending=True)
     # words = [model[idx.item()].strip() for idx in order]
     # print(words)
 
+    startTime = time.time()
     # filter words given comparison list
     print("Context = ", context)
     probs = []
     for comp in comparisons:
         probs.append(get_probabilities_words(model, context, comp))
-        print(f'With probability of {probs[-1]}: "{comp}"')
+        # print(f'With probability of {probs[-1]}: "{comp}"')
+    print(f"This took: {time.time()-startTime:.3f}")
 
 
     # topk = 10
