@@ -3,7 +3,8 @@ from torch.nn.functional import softmax
 from gpt2 import GPT2LanguageModel
 import numpy as np
 from tqdm import tqdm
-import time
+import pickle
+import os
 
 
 def saveSingleMultipleTokens(probsWithWords):
@@ -39,7 +40,13 @@ def get_next_words(model, context, words, depth):
         new_words.append(word + next_word)
     return get_next_words(model, context, new_words, depth-1)
 
-def get_wordvector(model, context, words):
+def calc_wordvector(model_name, context, words):
+    # loads the required model
+    if model_name == "117M":
+        model = GPT2LanguageModel(model_name='117M')
+    else:
+        model = GPT2LanguageModel(model_name='345M')
+
     # encode words to tokens and make a vector from them
     encoded_words = []
     longest_encoding = 0
@@ -49,17 +56,20 @@ def get_wordvector(model, context, words):
         encoded_words.append(encoding)
         if len(encoding) > longest_encoding:
             longest_encoding = len(encoding)
+    # create a padding on the right
     token_vector = np.ones((len(words), longest_encoding), dtype=int) * -1
+    # write the tokens in the token_vector
     for i, encoded_word in enumerate(encoded_words):
         token_vector[i, :len(encoded_word)] = encoded_word
 
+    # calc the single tokens (they are simple to calculate)
     same_tokens = np.expand_dims(token_vector[:, 0], axis=1) == np.expand_dims(token_vector[:, 0], axis=0)
     single_token_mask = np.sum(same_tokens, axis=1) == 1
 
     probs = np.ones(token_vector.shape)
-    # If comparison is composed of multiple words find them one after the other
     for i, encoded_word in enumerate(tqdm(encoded_words)):
         new_context = context
+        # go through the (at most two) tokens of the word and calc the probability
         for j, token in enumerate(encoded_word):
             logits = model.predict(new_context, None)
             probabilities = softmax(logits, dim=-1)
@@ -71,7 +81,7 @@ def get_wordvector(model, context, words):
             new_context += model.tokenizer.decode([token])
         # print(encoded_word, model.tokenizer.decode(encoded_word), probs)
 
-    # some words have the same (start-)tokens --> get next tokens prob and scale
+    # some words have the same (start-)tokens --> get following tokens prob and scale
     multi_probs = probs[~single_token_mask]
     multi_tokens = token_vector[~single_token_mask]
     start_tokens = {token: 0.0 for token in np.unique(multi_tokens)}
@@ -82,19 +92,41 @@ def get_wordvector(model, context, words):
     for start_token, summed_prob in start_tokens.items():
         multi_probs[multi_tokens[:, 0]==start_token, 1] /= summed_prob
     probs[~single_token_mask] = multi_probs
-    # Note for now only until the second token is taken into account (this assumes that after the second token the
-    #       word is different already from the others (e.g. dis-similar, dis-like)
+    # Note: for now only until the second token is taken into account (this assumes that after the second token the
+    #       word is unique already from the others (e.g. dis-similar, dis-like))
+    # this multiplies the first two tokens and writes it in the first column
     probs[~single_token_mask, 0] = np.prod(probs[~single_token_mask, :2], axis=1)
-
+    # scale the first column
     return probs[:, 0]/np.sum(probs[:, 0])
+
+def get_wordvector(model_name, context, words):
+    save = False
+    vectors = {}
+    filename = f"{model_name}_wordvectors.pkl"
+    if os.path.isfile(filename):
+        with open(filename, "rb") as f:
+            vectors = pickle.load(f)
+        # If the context was also calculated --> reuse it
+        if context in vectors:
+            wordvector = vectors[context]
+        # else calculate it and write it in the file
+        else:
+            wordvector = calc_wordvector(model_name, context, words)
+            save = True
+    else:
+        wordvector = calc_wordvector(model_name, context, words)
+        save = True
+
+    if save:
+        vectors[context] = wordvector
+        with open(filename, "wb") as f:
+            pickle.dump(vectors, f, protocol=pickle.HIGHEST_PROTOCOL)
+
+    return wordvector
 
 
 def main():
     model_name = "345M"
-    if model_name == "117M":
-        model = GPT2LanguageModel(model_name='117M')
-    else:
-        model = GPT2LanguageModel(model_name='345M')
 
     with open("emotions.txt", "r") as f:
         words = f.readlines()
@@ -108,7 +140,7 @@ def main():
     # filter words given comparison list
     print("Context = ", context)
 
-    emotionVector = get_wordvector(model, context, emotions)
+    emotionVector = get_wordvector(model_name, context, emotions)
 
     sorted_idx = np.argsort(emotionVector)[::-1]
     for i, idx in enumerate(sorted_idx):
