@@ -138,7 +138,7 @@ def main():
     # comparisons = ["big myth", "myth", "fascinating", "hoax", "farce", "onomatopeia"]
 
     # filter words given comparison list
-    print("Context = ", context)
+    print(f"Model: {model_name} Context = {context}")
 
     emotionVector = get_wordvector(model_name, context, emotions)
 
