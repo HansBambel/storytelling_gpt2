@@ -64,6 +64,9 @@ def get_wordvector(model, context, words):
             logits = model.predict(new_context, None)
             probabilities = softmax(logits, dim=-1)
             probs[i, j] = probabilities[token].item()
+            # Speedup: if first token does not occur another time we can stop for the word
+            if (j==0 and token not in token_vector[~single_token_mask, 0]):
+                break
             # feed in model with new context (oldContext+token) and get probability
             new_context += model.tokenizer.decode([token])
         # print(encoded_word, model.tokenizer.decode(encoded_word), probs)
@@ -87,7 +90,7 @@ def get_wordvector(model, context, words):
 
 
 def main():
-    model_name = "117M"
+    model_name = "345M"
     if model_name == "117M":
         model = GPT2LanguageModel(model_name='117M')
     else:
