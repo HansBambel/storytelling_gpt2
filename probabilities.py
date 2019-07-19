@@ -25,6 +25,14 @@ def saveSingleMultipleTokens(probsWithWords):
         for word in otherWordTokens:
             f.write(word+"\n")
 
+def load_model(model_name):
+    # loads the required model
+    if model_name == "117M":
+        model = GPT2LanguageModel(model_name='117M')
+    else:
+        model = GPT2LanguageModel(model_name='345M')
+    return model
+
 def get_next_words(model, context, words, depth):
     # get next "word" given context
     if depth == 0:
@@ -41,11 +49,7 @@ def get_next_words(model, context, words, depth):
     return get_next_words(model, context, new_words, depth-1)
 
 def calc_wordvector(model_name, context, words):
-    # loads the required model
-    if model_name == "117M":
-        model = GPT2LanguageModel(model_name='117M')
-    else:
-        model = GPT2LanguageModel(model_name='345M')
+    model = load_model(model_name)
 
     # encode words to tokens and make a vector from them
     encoded_words = []
@@ -124,6 +128,19 @@ def get_wordvector(model_name, context, words):
 
     return wordvector
 
+def get_topk_words(model_name, context, topk):
+    model = load_model(model_name)
+
+    logits = model.predict(context, None)
+
+    probabilities = softmax(logits, dim=-1)
+    best_logits, best_indices = logits.topk(topk)
+    best_words = [model[idx.item()] for idx in best_indices]
+
+    most_likely_words = get_next_words(model, context, best_words, 0)
+    best_probabilities = probabilities[best_indices].tolist()
+
+    return most_likely_words, best_probabilities
 
 def main():
     model_name = "345M"
@@ -134,7 +151,7 @@ def main():
     emotions = [e.strip() for e in words]
 
     # NOTE A trailing whitespace gives other output than without
-    context = "Global warming is"
+    context = "An intergalactic dinner is"
     # comparisons = ["big myth", "myth", "fascinating", "hoax", "farce", "onomatopeia"]
 
     # filter words given comparison list
@@ -146,27 +163,17 @@ def main():
     for i, idx in enumerate(sorted_idx):
         if i > 10:
             break
-        print(emotionVector[idx], emotions[idx])
+        print(f"{emotionVector[idx]:.4f}, {emotions[idx]}")
 
     # saveSingleMultipleTokens(probsWithWords)
 
 
     ################ Display top 10 words ######################
-    # topk = 10
-    #
-    # logits = model.predict(context, None)
-    #
-    # probabilities = softmax(logits, dim=-1)
-    # best_logits, best_indices = logits.topk(topk)
-    # best_words = [model[idx.item()] for idx in best_indices]
-    #
-    # most_likely_words = get_next_words(model, context, best_words, 0)
-    #
-    # best_probabilities = probabilities[best_indices].tolist()
-    #
-    # print("Input: ", context)
-    # for i, prob in enumerate(best_probabilities):
-    #     print(f"{prob*100:.3f}%: {most_likely_words[i].strip()}")
+    most_likely_words, best_probabilities = get_topk_words(model_name, context, 10)
+
+    print("Input: ", context)
+    for i, prob in enumerate(best_probabilities):
+        print(f"{prob*100:.3f}%: {most_likely_words[i].strip()}")
 
 
 if __name__ == '__main__':
