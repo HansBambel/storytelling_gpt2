@@ -5,7 +5,7 @@ import numpy as np
 from tqdm import tqdm
 import pickle
 import os
-import multiprocessing
+import multiprocessing as mp
 import pytorch_pretrained_bert
 import pytorch_transformers
 
@@ -87,8 +87,7 @@ def encode_words(model, words):
     return encoded_words, token_vector, single_token_mask
 
 
-def calc_wordvector(model_name, context, words):
-    model = load_model(model_name)
+def calc_wordvector(model, context, words):
     encoded_words, token_vector, single_token_mask = encode_words(model, words)
 
     probs = np.ones(token_vector.shape)
@@ -124,10 +123,12 @@ def calc_wordvector(model_name, context, words):
     # scale the first column
     return probs[:, 0]/np.sum(probs[:, 0])
 
-def get_wordvector(model_name, context, words, useFile=True):
+def get_wordvector(model, context, words, useFile=True):
+    # get rid of linebreaks
+    context = context.strip()
     save = False
     vectors = {}
-    filename = f"{model_name}_wordvectors.pkl"
+    filename = f"wordvectors/{context}.pkl"
     if os.path.isfile(filename) and useFile:
         with open(filename, "rb") as f:
             vectors = pickle.load(f)
@@ -136,10 +137,10 @@ def get_wordvector(model_name, context, words, useFile=True):
             wordvector = vectors[context]
         # else calculate it and write it in the file
         else:
-            wordvector = calc_wordvector(model_name, context, words)
+            wordvector = calc_wordvector(model, context, words)
             save = True
     else:
-        wordvector = calc_wordvector(model_name, context, words)
+        wordvector = calc_wordvector(model, context, words)
         save = True
 
     if save and useFile:
@@ -176,29 +177,46 @@ def comparison(word):
     print(f"pretrained encoding: {pretrained_encoding}")
     print(f"{[pretrainedBert_tokenizer.decode([enc]) for enc in pretrained_encoding]}")
 
+def multiprocess_prompts(prompt, model_name="345M", word_file="emotions.txt", useFile=True):
+    with open(word_file, "r") as f:
+        words = f.readlines()
+    emotions = [e.strip() for e in words]
+    model = load_model(model_name)
+    get_wordvector(model, prompt, emotions, useFile)
+
 def main():
     model_name = "345M"
+    model = load_model(model_name)
 
     with open("emotions.txt", "r") as f:
         words = f.readlines()
-    emotions = [e.strip() for e in words]
+    words = [e.strip() for e in words]
 
     # NOTE A trailing whitespace gives other output than without
-    context = "writing TV comedies. Liz Lemon thinks that cliches are"
+    context = "abusing power. Emperor Caligula thinks that powers are \n"
 
     ### Comparison of pytorch_pretrained_ber and pytorch_transformers in encoding a word
     # comparison("disgraceful")
 
+    ### load prompts for multiprocessing
+    with open("GPT prompts.txt", "r") as f:
+        prompts = f.readlines()
+    prompts = prompts[:8]
+    print(len(prompts))
+    print(prompts[-1])
+    pool = mp.Pool(mp.cpu_count())
+    pool.map(multiprocess_prompts, prompts)
+
     ### filter words given list of words
-    print(f"Model: {model_name} Context = {context}")
-
-    emotionVector = get_wordvector(model_name, context, words, useFile=False)
-
-    sorted_idx = np.argsort(emotionVector)[::-1]
-    for i, idx in enumerate(sorted_idx):
-        if i > 10:
-            break
-        print(f"{emotionVector[idx]:.4f}, {emotions[idx]}")
+    # print(f"Model: {model_name} Context = {context}")
+    #
+    # emotionVector = get_wordvector(model, context, words, useFile=True)
+    #
+    # sorted_idx = np.argsort(emotionVector)[::-1]
+    # for i, idx in enumerate(sorted_idx):
+    #     if i > 10:
+    #         break
+    #     print(f"{emotionVector[idx]:.4f}, {words[idx]}")
 
     # saveSingleMultipleTokens(model_name, emotions)
 
