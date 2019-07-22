@@ -2,18 +2,16 @@
 
 import itertools
 
-from pytorch_pretrained_bert.tokenization_gpt2 import GPT2Tokenizer
-from pytorch_pretrained_bert.modeling_gpt2 import GPT2LMHeadModel
+from pytorch_transformers.tokenization_gpt2 import GPT2Tokenizer
+from pytorch_transformers.modeling_gpt2 import GPT2LMHeadModel
+# from pytorch_pretrained_bert.tokenization_gpt2 import GPT2Tokenizer
+# from pytorch_pretrained_bert.modeling_gpt2 import GPT2LMHeadModel
 import torch
 import tqdm
 
 from language_model import LanguageModel
 from util.cache import LRUCache
 from util.sampling import random_sample
-
-
-MEDIUM_MODEL = 'https://storage.googleapis.com/allennlp/models/gpt2-345M-dump'
-LOCAL_MODEL = 'models\gpt2_345M_model'
 
 
 class GPT2LanguageModel(LanguageModel):

@@ -5,18 +5,32 @@ import numpy as np
 from tqdm import tqdm
 import pickle
 import os
+import multiprocessing
+import pytorch_pretrained_bert
+import pytorch_transformers
 
 
-def saveSingleMultipleTokens(probsWithWords):
+def saveSingleMultipleTokens(model_name, words):
+    model = load_model(model_name)
     singleWordTokens = []
+    twoWordTokens = []
+    threeWordTokens = []
     otherWordTokens = []
-    for entry in probsWithWords:
-        if len(entry[0]) == 1:
-            singleWordTokens.append(entry[1])
+    for i, word in enumerate(words):
+
+        encoding = np.array(model.tokenizer.encode(" " + word))
+        if len(encoding) == 1:
+            singleWordTokens.append(word)
+        elif len(encoding) == 2:
+            twoWordTokens.append(word)
+        elif len(encoding) == 3:
+            threeWordTokens.append(word)
         else:
-            otherWordTokens.append(entry[1])
-    #         print(entry[1], len(entry[0]))
-    print("Single word tokens: ", len(singleWordTokens), "out of ", len(probsWithWords))
+            otherWordTokens.append(word)
+            print(len(encoding), word, encoding)
+    print("Single word tokens: ", len(singleWordTokens), "out of ", len(words))
+    print("Two  word tokens: ", len(twoWordTokens), "out of ", len(words))
+    print("Three  word tokens: ", len(threeWordTokens), "out of ", len(words))
 
     with open("SingleTokenEmotions.txt", "w") as f:
         for word in singleWordTokens:
@@ -48,15 +62,15 @@ def get_next_words(model, context, words, depth):
         new_words.append(word + next_word)
     return get_next_words(model, context, new_words, depth-1)
 
-def calc_wordvector(model_name, context, words):
-    model = load_model(model_name)
-
+def encode_words(model, words):
     # encode words to tokens and make a vector from them
     encoded_words = []
     longest_encoding = 0
     for i, word in enumerate(words):
-        # Add a whitespace to the comparisons if there is no trailing whitespace in context
-        encoding = np.array(model.tokenizer.encode(" " + word if context[-1] != " " else word))
+        # Add an "is " so that the word gets encoded as if in a sentence and not single
+        encoding = np.array(model.tokenizer.encode("is " + word))
+        # Only use the actual word (this workaround is needed since whitespaces get removed in tokenizer of pytorch_transformers)
+        encoding = encoding[1:]
         encoded_words.append(encoding)
         if len(encoding) > longest_encoding:
             longest_encoding = len(encoding)
@@ -69,6 +83,13 @@ def calc_wordvector(model_name, context, words):
     # calc the single tokens (they are simple to calculate)
     same_tokens = np.expand_dims(token_vector[:, 0], axis=1) == np.expand_dims(token_vector[:, 0], axis=0)
     single_token_mask = np.sum(same_tokens, axis=1) == 1
+
+    return encoded_words, token_vector, single_token_mask
+
+
+def calc_wordvector(model_name, context, words):
+    model = load_model(model_name)
+    encoded_words, token_vector, single_token_mask = encode_words(model, words)
 
     probs = np.ones(token_vector.shape)
     for i, encoded_word in enumerate(tqdm(encoded_words)):
@@ -103,11 +124,11 @@ def calc_wordvector(model_name, context, words):
     # scale the first column
     return probs[:, 0]/np.sum(probs[:, 0])
 
-def get_wordvector(model_name, context, words):
+def get_wordvector(model_name, context, words, useFile=True):
     save = False
     vectors = {}
     filename = f"{model_name}_wordvectors.pkl"
-    if os.path.isfile(filename):
+    if os.path.isfile(filename) and useFile:
         with open(filename, "rb") as f:
             vectors = pickle.load(f)
         # If the context was also calculated --> reuse it
@@ -121,7 +142,7 @@ def get_wordvector(model_name, context, words):
         wordvector = calc_wordvector(model_name, context, words)
         save = True
 
-    if save:
+    if save and useFile:
         vectors[context] = wordvector
         with open(filename, "wb") as f:
             pickle.dump(vectors, f, protocol=pickle.HIGHEST_PROTOCOL)
@@ -137,27 +158,41 @@ def get_topk_words(model_name, context, topk):
     best_logits, best_indices = logits.topk(topk)
     best_words = [model[idx.item()] for idx in best_indices]
 
+    # the last number indicates how many tokens are calculated
     most_likely_words = get_next_words(model, context, best_words, 0)
     best_probabilities = probabilities[best_indices].tolist()
 
     return most_likely_words, best_probabilities
+
+def comparison(word):
+    trans_tokenizer = pytorch_transformers.tokenization_gpt2.GPT2Tokenizer.from_pretrained('gpt2')
+    pretrainedBert_tokenizer = pytorch_pretrained_bert.tokenization_gpt2.GPT2Tokenizer.from_pretrained('gpt2')
+    trans_encoding = trans_tokenizer.encode("is " + word)
+    trans_encoding = trans_encoding[1:]
+    pretrained_encoding = pretrainedBert_tokenizer.encode("is " + word)
+    pretrained_encoding = pretrained_encoding[1:]
+    print(f"Transformer encoding: {trans_encoding}")
+    print(f"{[trans_tokenizer.decode(enc) for enc in trans_encoding]}")
+    print(f"pretrained encoding: {pretrained_encoding}")
+    print(f"{[pretrainedBert_tokenizer.decode([enc]) for enc in pretrained_encoding]}")
 
 def main():
     model_name = "345M"
 
     with open("emotions.txt", "r") as f:
         words = f.readlines()
-
     emotions = [e.strip() for e in words]
 
     # NOTE A trailing whitespace gives other output than without
-    context = "An intergalactic dinner is"
-    # comparisons = ["big myth", "myth", "fascinating", "hoax", "farce", "onomatopeia"]
+    context = "writing TV comedies. Liz Lemon thinks that cliches are"
 
-    # filter words given comparison list
+    ### Comparison of pytorch_pretrained_ber and pytorch_transformers in encoding a word
+    # comparison("disgraceful")
+
+    ### filter words given list of words
     print(f"Model: {model_name} Context = {context}")
 
-    emotionVector = get_wordvector(model_name, context, emotions)
+    emotionVector = get_wordvector(model_name, context, words, useFile=False)
 
     sorted_idx = np.argsort(emotionVector)[::-1]
     for i, idx in enumerate(sorted_idx):
@@ -165,15 +200,15 @@ def main():
             break
         print(f"{emotionVector[idx]:.4f}, {emotions[idx]}")
 
-    # saveSingleMultipleTokens(probsWithWords)
+    # saveSingleMultipleTokens(model_name, emotions)
 
 
     ################ Display top 10 words ######################
-    most_likely_words, best_probabilities = get_topk_words(model_name, context, 10)
-
-    print("Input: ", context)
-    for i, prob in enumerate(best_probabilities):
-        print(f"{prob*100:.3f}%: {most_likely_words[i].strip()}")
+    # most_likely_words, best_probabilities = get_topk_words(model_name, context, 10)
+    #
+    # print("Input: ", context)
+    # for i, prob in enumerate(best_probabilities):
+    #     print(f"{prob*100:.3f}%: {most_likely_words[i].strip()}")
 
 
 if __name__ == '__main__':
