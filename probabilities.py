@@ -6,7 +6,7 @@ from tqdm import tqdm
 import pickle
 import os
 import multiprocessing as mp
-import pytorch_pretrained_bert
+# import pytorch_pretrained_bert
 import pytorch_transformers
 
 
@@ -165,17 +165,17 @@ def get_topk_words(model_name, context, topk):
 
     return most_likely_words, best_probabilities
 
-def comparison(word):
-    trans_tokenizer = pytorch_transformers.tokenization_gpt2.GPT2Tokenizer.from_pretrained('gpt2')
-    pretrainedBert_tokenizer = pytorch_pretrained_bert.tokenization_gpt2.GPT2Tokenizer.from_pretrained('gpt2')
-    trans_encoding = trans_tokenizer.encode("is " + word)
-    trans_encoding = trans_encoding[1:]
-    pretrained_encoding = pretrainedBert_tokenizer.encode("is " + word)
-    pretrained_encoding = pretrained_encoding[1:]
-    print(f"Transformer encoding: {trans_encoding}")
-    print(f"{[trans_tokenizer.decode(enc) for enc in trans_encoding]}")
-    print(f"pretrained encoding: {pretrained_encoding}")
-    print(f"{[pretrainedBert_tokenizer.decode([enc]) for enc in pretrained_encoding]}")
+# def comparison(word):
+#     trans_tokenizer = pytorch_transformers.tokenization_gpt2.GPT2Tokenizer.from_pretrained('gpt2')
+#     pretrainedBert_tokenizer = pytorch_pretrained_bert.tokenization_gpt2.GPT2Tokenizer.from_pretrained('gpt2')
+#     trans_encoding = trans_tokenizer.encode("is " + word)
+#     trans_encoding = trans_encoding[1:]
+#     pretrained_encoding = pretrainedBert_tokenizer.encode("is " + word)
+#     pretrained_encoding = pretrained_encoding[1:]
+#     print(f"Transformer encoding: {trans_encoding}")
+#     print(f"{[trans_tokenizer.decode(enc) for enc in trans_encoding]}")
+#     print(f"pretrained encoding: {pretrained_encoding}")
+#     print(f"{[pretrainedBert_tokenizer.decode([enc]) for enc in pretrained_encoding]}")
 
 def multiprocess_prompts(prompt, model_name="345M", word_file="emotions.txt", useFile=True):
     with open(word_file, "r") as f:
@@ -199,24 +199,24 @@ def main():
     # comparison("disgraceful")
 
     ### load prompts for multiprocessing
-    with open("GPT prompts.txt", "r") as f:
-        prompts = f.readlines()
-    prompts = prompts[:8]
-    print(len(prompts))
-    print(prompts[-1])
-    pool = mp.Pool(mp.cpu_count())
-    pool.map(multiprocess_prompts, prompts)
+    # with open("GPT prompts.txt", "r") as f:
+    #     prompts = f.readlines()
+    # prompts = prompts[8:16]
+    # print(len(prompts))
+    # print(prompts[-1])
+    # pool = mp.Pool(mp.cpu_count())
+    # pool.map(multiprocess_prompts, prompts)
 
     ### filter words given list of words
-    # print(f"Model: {model_name} Context = {context}")
-    #
-    # emotionVector = get_wordvector(model, context, words, useFile=True)
-    #
-    # sorted_idx = np.argsort(emotionVector)[::-1]
-    # for i, idx in enumerate(sorted_idx):
-    #     if i > 10:
-    #         break
-    #     print(f"{emotionVector[idx]:.4f}, {words[idx]}")
+    print(f"Model: {model_name} Context = {context}")
+
+    emotionVector = get_wordvector(model, context, words, useFile=True)
+
+    sorted_idx = np.argsort(emotionVector)[::-1]
+    for i, idx in enumerate(sorted_idx):
+        if i > 10:
+            break
+        print(f"{emotionVector[idx]:.4f}, {words[idx]}")
 
     # saveSingleMultipleTokens(model_name, emotions)
 
