@@ -99,19 +99,28 @@ class Pred():
 
 
     def calc_wordvector(self, context):
-        probs = np.ones(self.token_vector.shape)
-        for i, encoded_word in enumerate(tqdm(self.encoded_words)):
-            new_context = context
+        probs = torch.ones(self.token_vector.shape)
+        orig_logits = self.model.predict(context, None)
+        orig_probabilities = softmax(orig_logits, dim=-1)
+        probs[:, 0] = orig_probabilities[self.token_vector[:, 0]]
+
+        for i, encoded_word in enumerate(tqdm(self.token_vector)):
+            if encoded_word[1] == -1:
+                continue
+            new_context = context + self.model.tokenizer.decode([encoded_word[1]])
+            logits = self.model.predict(new_context, None)
+            probabilities = softmax(logits, dim=-1)
+            probs[i, 1] = probabilities[encoded_word[1]].item()
             # go through the (at most two) tokens of the word and calc the probability
-            for j, token in enumerate(encoded_word):
-                logits = self.model.predict(new_context, None)
-                probabilities = softmax(logits, dim=-1)
-                probs[i, j] = probabilities[token].item()
-                # Speedup: if first token does not occur another time we can stop for the word
-                if (j==0 and token not in self.token_vector[~self.single_token_mask, 0]):
-                    break
-                # feed in model with new context (oldContext+token) and get probability
-                new_context += self.model.tokenizer.decode([token])
+            # for j, token in enumerate(encoded_word):
+            #     logits = self.model.predict(new_context, None)
+            #     probabilities = softmax(logits, dim=-1)
+            #     probs[i, j] = probabilities[token].item()
+            #     # Speedup: if first token does not occur another time we can stop for the word
+            #     if (j==0 and token not in self.token_vector[~self.single_token_mask, 0]):
+            #         break
+            #     # feed in model with new context (oldContext+token) and get probability
+            #     new_context += self.model.tokenizer.decode([token])
             # print(encoded_word, model.tokenizer.decode(encoded_word), probs)
 
         # some words have the same (start-)tokens --> get following tokens prob and scale
@@ -128,9 +137,9 @@ class Pred():
         # Note: for now only until the second token is taken into account (this assumes that after the second token the
         #       word is unique already from the others (e.g. dis-similar, dis-like))
         # this multiplies the first two tokens and writes it in the first column
-        probs[~self.single_token_mask, 0] = np.prod(probs[~self.single_token_mask, :2], axis=1)
+        probs[~self.single_token_mask, 0] = torch.prod(probs[~self.single_token_mask, :2], dim=1)
         # scale the first column
-        return probs[:, 0]/np.sum(probs[:, 0])
+        return (probs[:, 0]/torch.sum(probs[:, 0])).detach().numpy()
 
     def get_wordvector(self, context, useFile=True):
         # get rid of linebreaks
@@ -172,17 +181,17 @@ class Pred():
 
         return most_likely_words, best_probabilities
 
-    # def comparison(self, word):
-    #     trans_tokenizer = pytorch_transformers.tokenization_gpt2.GPT2Tokenizer.from_pretrained('gpt2')
-    #     pretrainedBert_tokenizer = pytorch_pretrained_bert.tokenization_gpt2.GPT2Tokenizer.from_pretrained('gpt2')
-    #     trans_encoding = trans_tokenizer.encode("is " + word)
-    #     trans_encoding = trans_encoding[1:]
-    #     pretrained_encoding = pretrainedBert_tokenizer.encode("is " + word)
-    #     pretrained_encoding = pretrained_encoding[1:]
-    #     print(f"Transformer encoding: {trans_encoding}")
-    #     print(f"{[trans_tokenizer.decode(enc) for enc in trans_encoding]}")
-    #     print(f"pretrained encoding: {pretrained_encoding}")
-    #     print(f"{[pretrainedBert_tokenizer.decode([enc]) for enc in pretrained_encoding]}")
+# def comparison(word):
+#     trans_tokenizer = pytorch_transformers.tokenization_gpt2.GPT2Tokenizer.from_pretrained('gpt2')
+#     pretrainedBert_tokenizer = pytorch_pretrained_bert.tokenization_gpt2.GPT2Tokenizer.from_pretrained('gpt2')
+#     trans_encoding = trans_tokenizer.encode("is " + word)
+#     trans_encoding = trans_encoding[1:]
+#     pretrained_encoding = pretrainedBert_tokenizer.encode("is " + word)
+#     pretrained_encoding = pretrained_encoding[1:]
+#     print(f"Transformer encoding: {trans_encoding}")
+#     print(f"{[trans_tokenizer.decode(enc) for enc in trans_encoding]}")
+#     print(f"pretrained encoding: {pretrained_encoding}")
+#     print(f"{[pretrainedBert_tokenizer.decode([enc]) for enc in pretrained_encoding]}")
 
 
 if __name__ == '__main__':
@@ -190,15 +199,11 @@ if __name__ == '__main__':
     pred = Pred(model_name, "emotions.txt")
 
     # NOTE A trailing whitespace gives other output than without
-    context = "I had a great time "
+    context = "Tony Blair thinks that brexit is"
 
 
     ### Comparison of pytorch_pretrained_ber and pytorch_transformers in encoding a word
     # comparison("disgraceful")
-
-    ### define inner function for multiprocessing
-    def multiprocess_prompts(prompt):
-        pred.get_wordvector(prompt, useFile=True)
 
 
     ### load prompts for multiprocessing
@@ -212,21 +217,21 @@ if __name__ == '__main__':
     # pool.map(pred.get_wordvector, prompts)
 
     ### filter words given list of words
-    # print(f"Model: {model_name} Context = {context}")
-    #
-    # emotionVector = pred.get_wordvector(context, useFile=True)
-    #
-    # sorted_idx = np.argsort(emotionVector)[::-1]
-    # for i, idx in enumerate(sorted_idx):
-    #     if i > 10:
-    #         break
-    #     print(f"{emotionVector[idx]:.4f}, {pred.words[idx]}")
+    print(f"Model: {model_name} Context = {context}")
+
+    emotionVector = pred.get_wordvector(context, useFile=False)
+
+    sorted_idx = np.argsort(emotionVector)[::-1]
+    for i, idx in enumerate(sorted_idx):
+        if i > 10:
+            break
+        print(f"{emotionVector[idx]:.4f}, {pred.words[idx]}")
 
     # pred.saveSingleMultipleTokens(emotions)
 
     ################ Display top 10 words ######################
-    most_likely_words, best_probabilities = pred.get_topk_words(context, 10, nTokens=4)
-
-    print("Input: ", context)
-    for i, prob in enumerate(best_probabilities):
-        print(f"{prob*100:.3f}%: {most_likely_words[i].strip()}")
+    # most_likely_words, best_probabilities = pred.get_topk_words(context, 10, nTokens=4)
+    #
+    # print("Input: ", context)
+    # for i, prob in enumerate(best_probabilities):
+    #     print(f"{prob*100:.3f}%: {most_likely_words[i].strip()}")
