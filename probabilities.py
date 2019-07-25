@@ -99,34 +99,26 @@ class Pred():
 
 
     def calc_wordvector(self, context):
-        probs = torch.ones(self.token_vector.shape)
+        probs = np.ones(self.token_vector.shape)
         orig_logits = self.model.predict(context, None)
         orig_probabilities = softmax(orig_logits, dim=-1)
-        probs[:, 0] = orig_probabilities[self.token_vector[:, 0]]
+        probs[:, 0] = orig_probabilities[self.token_vector[:, 0]].detach().numpy()
 
-        for i, encoded_word in enumerate(tqdm(self.token_vector)):
-            if encoded_word[1] == -1:
-                continue
-            new_context = context + self.model.tokenizer.decode([encoded_word[1]])
+        mask = self.token_vector[:, 1] != -1
+        second_word_probs = np.ones(np.sum(mask))
+        for i, encoded_word in enumerate(tqdm(self.token_vector[mask])):
+
+            # look at second token probability after first token is fed in
+            new_context = context + self.model.tokenizer.decode([encoded_word[0]])
             logits = self.model.predict(new_context, None)
             probabilities = softmax(logits, dim=-1)
-            probs[i, 1] = probabilities[encoded_word[1]].item()
-            # go through the (at most two) tokens of the word and calc the probability
-            # for j, token in enumerate(encoded_word):
-            #     logits = self.model.predict(new_context, None)
-            #     probabilities = softmax(logits, dim=-1)
-            #     probs[i, j] = probabilities[token].item()
-            #     # Speedup: if first token does not occur another time we can stop for the word
-            #     if (j==0 and token not in self.token_vector[~self.single_token_mask, 0]):
-            #         break
-            #     # feed in model with new context (oldContext+token) and get probability
-            #     new_context += self.model.tokenizer.decode([token])
-            # print(encoded_word, model.tokenizer.decode(encoded_word), probs)
+            second_word_probs[i] = probabilities[encoded_word[1]].item()
+        probs[mask, 1] = second_word_probs
 
         # some words have the same (start-)tokens --> get following tokens prob and scale
         multi_probs = probs[~self.single_token_mask]
         multi_tokens = self.token_vector[~self.single_token_mask]
-        start_tokens = {token: 0.0 for token in np.unique(multi_tokens)}
+        start_tokens = {token: 0.0 for token in np.unique(multi_tokens[:, 0])}
         # sum up probability of second token with same first token
         for i, token in enumerate(multi_tokens):
             start_tokens[token[0]] += multi_probs[i, 1]
@@ -137,9 +129,9 @@ class Pred():
         # Note: for now only until the second token is taken into account (this assumes that after the second token the
         #       word is unique already from the others (e.g. dis-similar, dis-like))
         # this multiplies the first two tokens and writes it in the first column
-        probs[~self.single_token_mask, 0] = torch.prod(probs[~self.single_token_mask, :2], dim=1)
+        probs[~self.single_token_mask, 0] = np.prod(probs[~self.single_token_mask, :2], axis=1)
         # scale the first column
-        return (probs[:, 0]/torch.sum(probs[:, 0])).detach().numpy()
+        return probs[:, 0]/np.sum(probs[:, 0])
 
     def get_wordvector(self, context, useFile=True):
         # get rid of linebreaks
