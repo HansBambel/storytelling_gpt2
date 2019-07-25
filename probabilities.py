@@ -200,9 +200,9 @@ if __name__ == '__main__':
 
     ### load prompts for multiprocessing
     # print(f"Available cores: {mp.cpu_count()}")
-    # with open("GPT prompts.txt", "r", encoding='utf-8') as f:
+    # with open("GPT prompts stripped.txt", "r", encoding='utf-8') as f:
     #     prompts = f.readlines()
-    # prompts = prompts[8:16]
+    # prompts = prompts[16:24]
     # print(len(prompts))
     # print(f"Example prompt: {prompts[-1]}")
     # pool = mp.Pool(mp.cpu_count())

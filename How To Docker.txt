@@ -10,7 +10,8 @@
 	d. docker run <image-name> 	(-d =detached/background, 
 					-it =interactive shell, 
 					--rm =removes container after exit, 
-					-m 32g =allows the container to use 32gb of RAM (Doesn't seem to work with current Docker version under Windows))
+					-m 32g =allows the container to use 32gb of RAM (Doesn't seem to work with current Docker version under Windows)
+					--ipc="host" (needs this to make multiprocessing possible))
 	e. docker exec -it <container-name> /bin/bash (enter running container)
 	f. docker cp . <container-name>:/gpt2 (copies files from host to container)
 	g. docker stop <container-name>	(stops the container)
