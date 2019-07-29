@@ -5,13 +5,16 @@ import numpy as np
 from tqdm import tqdm
 import pickle
 import os
+import sys
 import multiprocessing as mp
+import time
 # import pytorch_pretrained_bert
 import pytorch_transformers
 
 class Pred():
 
     def __init__(self, model_name, filename):
+        self.model_name = model_name
         self.load_model(model_name)
         self.setWords(filename)
         self.set_encoded_words()
@@ -106,8 +109,7 @@ class Pred():
 
         mask = self.token_vector[:, 1] != -1
         second_word_probs = np.ones(np.sum(mask))
-        for i, encoded_word in enumerate(tqdm(self.token_vector[mask])):
-
+        for i, encoded_word in enumerate(self.token_vector[mask]):
             # look at second token probability after first token is fed in
             new_context = context + self.model.tokenizer.decode([encoded_word[0]])
             logits = self.model.predict(new_context, None)
@@ -160,6 +162,7 @@ class Pred():
 
         return wordvector
 
+
     def get_topk_words(self, context, topk, nTokens=0):
         logits = self.model.predict(context, None)
 
@@ -193,31 +196,47 @@ if __name__ == '__main__':
     # NOTE A trailing whitespace gives other output than without
     context = "Tony Blair thinks that brexit is"
 
-
     ### Comparison of pytorch_pretrained_ber and pytorch_transformers in encoding a word
     # comparison("disgraceful")
 
-
-    ### load prompts for multiprocessing
-    # print(f"Available cores: {mp.cpu_count()}")
+    ### process prompts one after the other
+    # start_time = time.time()
     # with open("GPT prompts stripped.txt", "r", encoding='utf-8') as f:
     #     prompts = f.readlines()
-    # prompts = prompts[16:24]
-    # print(len(prompts))
+    # print("Total number of prompts: ", len(prompts))
+
+    # numberPrompts = 1500
+    # promptsFromLine = int(sys.argv[1])
+    # print(f"Processing prompts from line {promptsFromLine} to {promptsFromLine + numberPrompts}")
+    # prompts = prompts[promptsFromLine:promptsFromLine + numberPrompts]
+    #
+    # for p in tqdm(prompts):
+    #     pred.get_wordvector(p, useFile=True)
+    # print(f"Processing {len(prompts)} prompts took about {time.time()-start_time:2f} seconds")
+
+
+    ### load prompts for multiprocessing
+    start_time = time.time()
+    print(f"Available cores: {mp.cpu_count()}")
+    with open("GPT prompts stripped.txt", "r", encoding='utf-8') as f:
+        prompts = f.readlines()
+    # prompts = prompts[0:1000 + 2 * mp.cpu_count()]
+    print(len(prompts))
     # print(f"Example prompt: {prompts[-1]}")
-    # pool = mp.Pool(mp.cpu_count())
-    # pool.map(pred.get_wordvector, prompts)
+    pool = mp.Pool(mp.cpu_count())
+    pool.map(pred.get_wordvector, prompts)
+    print(f"Required for {len(prompts)} prompts about {time.time() - start_time:.2f} seconds")
 
     ### filter words given list of words
-    print(f"Model: {model_name} Context = {context}")
-
-    emotionVector = pred.get_wordvector(context, useFile=False)
-
-    sorted_idx = np.argsort(emotionVector)[::-1]
-    for i, idx in enumerate(sorted_idx):
-        if i > 10:
-            break
-        print(f"{emotionVector[idx]:.4f}, {pred.words[idx]}")
+    # print(f"Model: {model_name} Context = {context}")
+    #
+    # emotionVector = pred.get_wordvector(context, useFile=False)
+    #
+    # sorted_idx = np.argsort(emotionVector)[::-1]
+    # for i, idx in enumerate(sorted_idx):
+    #     if i > 10:
+    #         break
+    #     print(f"{emotionVector[idx]:.4f}, {pred.words[idx]}")
 
     # pred.saveSingleMultipleTokens(emotions)
 
