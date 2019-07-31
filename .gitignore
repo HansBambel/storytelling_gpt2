@@ -2,3 +2,5 @@ __pycache__/
 .idea/
 models/
 .ipynb_checkpoints
+wordvectors/
+scripts/

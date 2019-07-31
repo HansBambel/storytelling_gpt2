@@ -140,7 +140,7 @@ class Pred():
         context = context.strip()
         save = False
         vectors = {}
-        filename = f"wordvectors/{context}.pkl"
+        filename = f"wordvectors/{context.replace('/', '-')}.pkl"
         if os.path.isfile(filename) and useFile:
             with open(filename, "rb") as f:
                 vectors = pickle.load(f)
