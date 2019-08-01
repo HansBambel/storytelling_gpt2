@@ -8,7 +8,7 @@ import os
 import sys
 import multiprocessing as mp
 import time
-# import pytorch_pretrained_bert
+from scipy.spatial.distance import cdist
 import pytorch_transformers
 
 class Pred():
@@ -109,7 +109,8 @@ class Pred():
 
         mask = self.token_vector[:, 1] != -1
         second_word_probs = np.ones(np.sum(mask))
-        for i, encoded_word in enumerate(self.token_vector[mask]):
+        # for visualization of progress tqdm can be used (remove when running on cluster)
+        for i, encoded_word in enumerate(tqdm(self.token_vector[mask])):
             # look at second token probability after first token is fed in
             new_context = context + self.model.tokenizer.decode([encoded_word[0]])
             logits = self.model.predict(new_context, None)
@@ -176,17 +177,18 @@ class Pred():
 
         return most_likely_words, best_probabilities
 
-# def comparison(word):
-#     trans_tokenizer = pytorch_transformers.tokenization_gpt2.GPT2Tokenizer.from_pretrained('gpt2')
-#     pretrainedBert_tokenizer = pytorch_pretrained_bert.tokenization_gpt2.GPT2Tokenizer.from_pretrained('gpt2')
-#     trans_encoding = trans_tokenizer.encode("is " + word)
-#     trans_encoding = trans_encoding[1:]
-#     pretrained_encoding = pretrainedBert_tokenizer.encode("is " + word)
-#     pretrained_encoding = pretrained_encoding[1:]
-#     print(f"Transformer encoding: {trans_encoding}")
-#     print(f"{[trans_tokenizer.decode(enc) for enc in trans_encoding]}")
-#     print(f"pretrained encoding: {pretrained_encoding}")
-#     print(f"{[pretrainedBert_tokenizer.decode([enc]) for enc in pretrained_encoding]}")
+def getDistanceToOthers(vector, vectorMatrix, metric="euclidean", pred=None):
+    if isinstance(vector, str):
+        if pred==None:
+            raise ValueError("No Pred class specified to be used!")
+        # If vector is a string --> use the model to create the emotion vector
+        correctedVec = np.expand_dims(pred.get_wordvector(vector, False), axis=0)
+    else:
+        correctedVec = np.expand_dims(vector, axis=0)
+
+    distanceToOthers = cdist(correctedVec, vectorMatrix, metric=metric)[0]
+    return distanceToOthers
+
 
 
 if __name__ == '__main__':
@@ -196,10 +198,10 @@ if __name__ == '__main__':
     # NOTE A trailing whitespace gives other output than without
     context = "Tony Blair thinks that brexit is"
 
-    ### Comparison of pytorch_pretrained_ber and pytorch_transformers in encoding a word
+    ################ Comparison of pytorch_pretrained_ber and pytorch_transformers in encoding a word ################
     # comparison("disgraceful")
 
-    ### process prompts one after the other
+    ################ process prompts one after the other ################
     # start_time = time.time()
     # with open("GPT prompts stripped.txt", "r", encoding='utf-8') as f:
     #     prompts = f.readlines()
@@ -215,19 +217,19 @@ if __name__ == '__main__':
     # print(f"Processing {len(prompts)} prompts took about {time.time()-start_time:2f} seconds")
 
 
-    ### load prompts for multiprocessing
-    start_time = time.time()
-    print(f"Available cores: {mp.cpu_count()}")
-    with open("GPT prompts stripped.txt", "r", encoding='utf-8') as f:
-        prompts = f.readlines()
-    # prompts = prompts[0:1000 + 2 * mp.cpu_count()]
-    print(len(prompts))
-    # print(f"Example prompt: {prompts[-1]}")
-    pool = mp.Pool(mp.cpu_count())
-    pool.map(pred.get_wordvector, prompts)
-    print(f"Required for {len(prompts)} prompts about {time.time() - start_time:.2f} seconds")
+    ################ load prompts for multiprocessing ################
+    # start_time = time.time()
+    # print(f"Available cores: {mp.cpu_count()}")
+    # with open("GPT prompts stripped.txt", "r", encoding='utf-8') as f:
+    #     prompts = f.readlines()
+    # # prompts = prompts[0:1000 + 2 * mp.cpu_count()]
+    # print(len(prompts))
+    # # print(f"Example prompt: {prompts[-1]}")
+    # pool = mp.Pool(mp.cpu_count())
+    # pool.map(pred.get_wordvector, prompts)
+    # print(f"Required for {len(prompts)} prompts about {time.time() - start_time:.2f} seconds")
 
-    ### filter words given list of words
+    ################ filter words given list of words ################
     # print(f"Model: {model_name} Context = {context}")
     #
     # emotionVector = pred.get_wordvector(context, useFile=False)
@@ -240,9 +242,31 @@ if __name__ == '__main__':
 
     # pred.saveSingleMultipleTokens(emotions)
 
-    ################ Display top 10 words ######################
+    ################ Display top 10 words ################
     # most_likely_words, best_probabilities = pred.get_topk_words(context, 10, nTokens=4)
     #
     # print("Input: ", context)
     # for i, prob in enumerate(best_probabilities):
     #     print(f"{prob*100:.3f}%: {most_likely_words[i].strip()}")
+
+    ################ Get distance of context to other contexts ################
+    with open("Wordvectors.pkl", "rb") as f:
+        wordvectors = pickle.load(f)
+    with open("Contexts.pkl", "rb") as f:
+        contexts = pickle.load(f)
+    with open("emotions.txt", "r") as f:
+        emotions = f.readlines()
+    emotions = [e.strip() for e in emotions]
+
+    context = wordvectors[1337]
+    n = 10
+    # print(context)
+    distanceToOthers = getDistanceToOthers(context, wordvectors, metric="euclidean")
+
+    order = np.argsort(distanceToOthers)
+    print("Closest")
+    for ind in order[:n]:
+        print(f"Dist: {distanceToOthers[ind]:.5f} Context: {contexts[ind]}")
+    print("Farthest")
+    for ind in order[::-1][:n]:
+        print(f"Dist: {distanceToOthers[ind]:.5f} Context: {contexts[ind]}")
