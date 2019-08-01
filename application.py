@@ -78,10 +78,10 @@ class Pred():
         print("Two  word tokens: ", len(twoWordTokens), "out of ", len(self.words))
         print("Three  word tokens: ", len(threeWordTokens), "out of ", len(self.words))
 
-        with open("SingleTokenEmotions.txt", "w") as f:
+        with open("data/SingleTokenEmotions.txt", "w") as f:
             for word in singleWordTokens:
                 f.write(word+"\n")
-        with open("MultipleTokenEmotions.txt", "w") as f:
+        with open("data/MultipleTokenEmotions.txt", "w") as f:
             for word in otherWordTokens:
                 f.write(word+"\n")
 
@@ -141,7 +141,7 @@ class Pred():
         context = context.strip()
         save = False
         vectors = {}
-        filename = f"wordvectors/{context.replace('/', '-')}.pkl"
+        filename = f"data/wordvectors/{context.replace('/', '-')}.pkl"
         if os.path.isfile(filename) and useFile:
             with open(filename, "rb") as f:
                 vectors = pickle.load(f)
@@ -198,12 +198,10 @@ if __name__ == '__main__':
     # NOTE A trailing whitespace gives other output than without
     context = "Tony Blair thinks that brexit is"
 
-    ################ Comparison of pytorch_pretrained_ber and pytorch_transformers in encoding a word ################
-    # comparison("disgraceful")
 
     ################ process prompts one after the other ################
     # start_time = time.time()
-    # with open("GPT prompts stripped.txt", "r", encoding='utf-8') as f:
+    # with open("data/GPT prompts stripped.txt", "r", encoding='utf-8') as f:
     #     prompts = f.readlines()
     # print("Total number of prompts: ", len(prompts))
 
@@ -220,7 +218,7 @@ if __name__ == '__main__':
     ################ load prompts for multiprocessing ################
     # start_time = time.time()
     # print(f"Available cores: {mp.cpu_count()}")
-    # with open("GPT prompts stripped.txt", "r", encoding='utf-8') as f:
+    # with open("data/GPT prompts stripped.txt", "r", encoding='utf-8') as f:
     #     prompts = f.readlines()
     # # prompts = prompts[0:1000 + 2 * mp.cpu_count()]
     # print(len(prompts))
@@ -229,7 +227,7 @@ if __name__ == '__main__':
     # pool.map(pred.get_wordvector, prompts)
     # print(f"Required for {len(prompts)} prompts about {time.time() - start_time:.2f} seconds")
 
-    ################ filter words given list of words ################
+    ################ filter words given list of words and print the best fitting ones ################
     # print(f"Model: {model_name} Context = {context}")
     #
     # emotionVector = pred.get_wordvector(context, useFile=False)
@@ -250,11 +248,11 @@ if __name__ == '__main__':
     #     print(f"{prob*100:.3f}%: {most_likely_words[i].strip()}")
 
     ################ Get distance of context to other contexts ################
-    with open("Wordvectors.pkl", "rb") as f:
+    with open("data/Wordvectors.pkl", "rb") as f:
         wordvectors = pickle.load(f)
-    with open("Contexts.pkl", "rb") as f:
+    with open("data/Contexts.pkl", "rb") as f:
         contexts = pickle.load(f)
-    with open("emotions.txt", "r") as f:
+    with open("data/emotions.txt", "r") as f:
         emotions = f.readlines()
     emotions = [e.strip() for e in emotions]
 
