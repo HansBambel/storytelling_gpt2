@@ -15,6 +15,8 @@ In `application.py` there are many functions that can be used to get insight to 
 Somehow the cluster did not utilize multiprocessing correctly, therefore there is code for running it consequently and with multiprocessing.
 - Given about 28.5k prompts we created for every single one the wordvector of emotions. This enables us to calculate a distance between them and a given input for further use.
 
+In `HelperNotebook.ipynb` I did data cleaning and preparations for implementing functions in `application.py`.
+
 ### Models
 GPT-2 117M is easily loadable through the pytorch_pretrained_bert module by using `from_pretrained('gpt2')` for the models. 
 
