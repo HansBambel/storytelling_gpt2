@@ -228,15 +228,15 @@ if __name__ == '__main__':
     # print(f"Required for {len(prompts)} prompts about {time.time() - start_time:.2f} seconds")
 
     ################ filter words given list of words and print the best fitting ones ################
-    print(f"Model: {model_name} Context = {context}")
-
-    emotionVector = pred.get_wordvector(context, useFile=False)
-
-    sorted_idx = np.argsort(emotionVector)[::-1]
-    for i, idx in enumerate(sorted_idx):
-        if i > 10:
-            break
-        print(f"{emotionVector[idx]:.4f}, {pred.words[idx]}")
+    # print(f"Model: {model_name} Context = {context}")
+    #
+    # emotionVector = pred.get_wordvector(context, useFile=False)
+    #
+    # sorted_idx = np.argsort(emotionVector)[::-1]
+    # for i, idx in enumerate(sorted_idx):
+    #     if i > 10:
+    #         break
+    #     print(f"{emotionVector[idx]:.4f}, {pred.words[idx]}")
 
     # pred.saveSingleMultipleTokens(emotions)
 
@@ -248,23 +248,23 @@ if __name__ == '__main__':
     #     print(f"{prob*100:.3f}%: {most_likely_words[i].strip()}")
 
     ################ Get distance of context to other contexts ################
-    # with open("data/Wordvectors.pkl", "rb") as f:
-    #     wordvectors = pickle.load(f)
-    # with open("data/Contexts.pkl", "rb") as f:
-    #     contexts = pickle.load(f)
-    # with open("data/emotions.txt", "r") as f:
-    #     emotions = f.readlines()
-    # emotions = [e.strip() for e in emotions]
-    #
-    # context = wordvectors[1337]
-    # n = 10
-    # # print(context)
-    # distanceToOthers = getDistanceToOthers(context, wordvectors, metric="euclidean")
-    #
-    # order = np.argsort(distanceToOthers)
-    # print("Closest")
-    # for ind in order[:n]:
-    #     print(f"Dist: {distanceToOthers[ind]:.5f} Context: {contexts[ind]}")
-    # print("Farthest")
-    # for ind in order[::-1][:n]:
-    #     print(f"Dist: {distanceToOthers[ind]:.5f} Context: {contexts[ind]}")
+    with open("data/Wordvectors.pkl", "rb") as f:
+        wordvectors = pickle.load(f)
+    with open("data/Contexts.pkl", "rb") as f:
+        contexts = pickle.load(f)
+    with open("data/emotions.txt", "r") as f:
+        emotions = f.readlines()
+    emotions = [e.strip() for e in emotions]
+
+    context = wordvectors[75]
+    n = 10
+    # print(context)
+    distanceToOthers = getDistanceToOthers(context, wordvectors, metric="euclidean")
+
+    order = np.argsort(distanceToOthers)
+    print("Closest")
+    for ind in order[:n]:
+        print(f"Dist: {distanceToOthers[ind]:.5f} Context: {contexts[ind]}")
+    print("Farthest")
+    for ind in order[::-1][:n]:
+        print(f"Dist: {distanceToOthers[ind]:.5f} Context: {contexts[ind]}")
