@@ -1,6 +1,7 @@
 import torch
 from torch.nn.functional import softmax
 from gpt2 import GPT2LanguageModel
+from util.sampling import top_p_sample
 import numpy as np
 from tqdm import tqdm
 import pickle
@@ -182,6 +183,27 @@ class Pred():
 
         return most_likely_words, best_probabilities
 
+    def generate_story(self, prompt, log_con, max_sentences=3):
+        output = prompt + "\n"
+        # generate until max sentences are reached or endoftext
+        sentence_count = 0
+        while sentence_count < max_sentences:
+            # Create until end of sentence is found
+            end_of_sentence = False
+            while not end_of_sentence:
+                logits = self.model.predict(output)
+                random_sample = top_p_sample(logits, top_p=0.9)
+                next_word = self.model.tokenizer.decode(random_sample.item())
+                output += next_word
+                # check if last things in output are end of sentence
+                if ("." in output[-2:]) or ("?" in output[-2:]) or ("!" in output[-2:]):
+                    end_of_sentence = True
+            sentence_count +=1
+            if sentence_count < max_sentences:
+                output += " " + np.random.choice(log_con)
+        return output
+
+
 def getDistanceToOthers(vector, vectorMatrix, metric="euclidean", pred=None):
     if isinstance(vector, str):
         if pred==None:
@@ -197,13 +219,13 @@ def getDistanceToOthers(vector, vectorMatrix, metric="euclidean", pred=None):
 
 
 if __name__ == '__main__':
-    model_name = "345M"
-    # model_name = "models/writingprompts_117M"
+    # model_name = "345M"
     word_file = "data/emotions.txt"
-    pred = Pred(model_name, word_file)
+    model_name = "models/writingprompts_117M"
+    pred = Pred(model_name)
 
     # NOTE A trailing whitespace gives other output than without
-    context = "Global warming is"
+    # context = "Global warming is"
 
 
     ################ process prompts one after the other ################
@@ -255,23 +277,31 @@ if __name__ == '__main__':
     #     print(f"{prob*100:.3f}%: {most_likely_words[i].strip()}")
 
     ################ Get distance of context to other contexts ################
-    with open("data/Wordvectors.pkl", "rb") as f:
-        wordvectors = pickle.load(f)
-    with open("data/Contexts.pkl", "rb") as f:
-        contexts = pickle.load(f)
-    with open("data/emotions.txt", "r") as f:
-        emotions = f.readlines()
-    emotions = [e.strip() for e in emotions]
+    # with open("data/Wordvectors.pkl", "rb") as f:
+    #     wordvectors = pickle.load(f)
+    # with open("data/Contexts.pkl", "rb") as f:
+    #     contexts = pickle.load(f)
+    # with open("data/emotions.txt", "r") as f:
+    #     emotions = f.readlines()
+    # emotions = [e.strip() for e in emotions]
+    #
+    # context = "harvesting crops. Jose think that potatoes are"
+    # n = 10
+    # # print(context)
+    # distanceToOthers = getDistanceToOthers(context, wordvectors, metric="euclidean", pred=pred)
+    #
+    # order = np.argsort(distanceToOthers)
+    # print("Closest")
+    # for ind in order[:n]:
+    #     print(f"Dist: {distanceToOthers[ind]:.5f} Context: {contexts[ind]}")
+    # print("Farthest")
+    # for ind in order[::-1][:n]:
+    #     print(f"Dist: {distanceToOthers[ind]:.5f} Context: {contexts[ind]}")
 
-    context = "harvesting crops. Jose think that potatoes are"
-    n = 10
-    # print(context)
-    distanceToOthers = getDistanceToOthers(context, wordvectors, metric="euclidean", pred=pred)
-
-    order = np.argsort(distanceToOthers)
-    print("Closest")
-    for ind in order[:n]:
-        print(f"Dist: {distanceToOthers[ind]:.5f} Context: {contexts[ind]}")
-    print("Farthest")
-    for ind in order[::-1][:n]:
-        print(f"Dist: {distanceToOthers[ind]:.5f} Context: {contexts[ind]}")
+    ################ Create stories ################
+    # use model and after a sentence use a logical connective and feed it in with that
+    prompt = '''[WP] You are a fresh junior researcher at NASA. While out for drinks with your new boss, you jokingly ask her why NASA hasn't explored the ocean with its resources. She turns pale and leans in close, then whispers, "We have. Why do you think we want to leave the planet so badly?'''
+    # NOTE sentences can end with: . ." ! !" ? ?"
+    log_connectives = ["So", "But", "Then", "Yet", "Thereafter", "Meanwhile", "Suddenly", "Surprisingly", "Mysteriously", "Nonetheless", "Nevertheless"]
+    story = pred.generate_story(prompt, log_connectives, max_sentences=8)
+    print(story)
