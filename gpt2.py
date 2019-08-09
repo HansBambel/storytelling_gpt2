@@ -27,7 +27,7 @@ class GPT2LanguageModel(LanguageModel):
         elif model_name == '345M':
             self.model = GPT2LMHeadModel.from_pretrained('gpt2-medium')
         else:
-            exit("model name not found")
+            self.model = GPT2LMHeadModel.from_pretrained(model_name)
 
         # The end of text marker.
         self.END_OF_TEXT = self.tokenizer.encoder["<|endoftext|>"]

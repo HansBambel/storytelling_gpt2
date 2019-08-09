@@ -13,23 +13,28 @@ import pytorch_transformers
 
 class Pred():
 
-    def __init__(self, model_name, filename):
+    def __init__(self, model_name, filename=None):
         self.model_name = model_name
         self.load_model(model_name)
         self.setWords(filename)
-        self.set_encoded_words()
 
     def load_model(self, model_name):
         # loads the required model
         if model_name == "117M":
             self.model = GPT2LanguageModel(model_name='117M')
-        else:
+        elif model_name == "345M":
             self.model = GPT2LanguageModel(model_name='345M')
+        else:
+            self.model = GPT2LanguageModel(model_name=model_name)
 
     def setWords(self, filename):
-        with open(filename, "r", encoding='utf-8') as f:
-            words = f.readlines()
-        self.words = [e.strip() for e in words]
+        if filename==None:
+            self.words = None
+        else:
+            with open(filename, "r", encoding='utf-8') as f:
+                words = f.readlines()
+            self.words = [e.strip() for e in words]
+            self.set_encoded_words()
 
     def set_encoded_words(self):
         # encode words to tokens and make a vector from them
@@ -180,7 +185,7 @@ class Pred():
 def getDistanceToOthers(vector, vectorMatrix, metric="euclidean", pred=None):
     if isinstance(vector, str):
         if pred==None:
-            raise ValueError("No Pred class specified to be used!")
+            raise ValueError("No model to convert string specified to be used!")
         # If vector is a string --> use the model to create the emotion vector
         correctedVec = np.expand_dims(pred.get_wordvector(vector, False), axis=0)
     else:
@@ -193,7 +198,9 @@ def getDistanceToOthers(vector, vectorMatrix, metric="euclidean", pred=None):
 
 if __name__ == '__main__':
     model_name = "345M"
-    pred = Pred(model_name, "data/emotions.txt")
+    # model_name = "models/writingprompts_117M"
+    word_file = "data/emotions.txt"
+    pred = Pred(model_name, word_file)
 
     # NOTE A trailing whitespace gives other output than without
     context = "Global warming is"
@@ -256,10 +263,10 @@ if __name__ == '__main__':
         emotions = f.readlines()
     emotions = [e.strip() for e in emotions]
 
-    context = wordvectors[75]
+    context = "harvesting crops. Jose think that potatoes are"
     n = 10
     # print(context)
-    distanceToOthers = getDistanceToOthers(context, wordvectors, metric="euclidean")
+    distanceToOthers = getDistanceToOthers(context, wordvectors, metric="euclidean", pred=pred)
 
     order = np.argsort(distanceToOthers)
     print("Closest")
