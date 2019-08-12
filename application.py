@@ -183,9 +183,10 @@ class Pred():
 
         return most_likely_words, best_probabilities
 
-    def generate_story(self, prompt, log_con, max_sentences=3):
+    def generate_story_with_connectives(self, prompt, log_con, max_sentences=8):
         output = prompt + "\n"
         # generate until max sentences are reached or endoftext
+        pbar = tqdm(total=max_sentences)
         sentence_count = 0
         while sentence_count < max_sentences:
             # Create until end of sentence is found
@@ -199,8 +200,25 @@ class Pred():
                 if ("." in output[-2:]) or ("?" in output[-2:]) or ("!" in output[-2:]):
                     end_of_sentence = True
             sentence_count +=1
-            if sentence_count < max_sentences:
+            if (sentence_count < max_sentences) and (sentence_count%2 == 0):
                 output += " " + np.random.choice(log_con)
+            pbar.update(1)
+        pbar.close()
+        return output
+
+    def generate_story(self, prompt, numTokens):
+        output = prompt
+        currentTokens = 0
+        while(True):
+            logits = self.model.predict(output)
+            random_sample = top_p_sample(logits, top_p=0.9)
+            next_token = self.model.tokenizer.decode(random_sample.item())
+            output += next_token
+            currentTokens += 1
+            # Finish sentence with a colon, question mark or exclamation mark
+            if currentTokens > numTokens:
+                if ("." in output[-2:]) or ("?" in output[-2:]) or ("!" in output[-2:]):
+                    break
         return output
 
 
@@ -298,10 +316,21 @@ if __name__ == '__main__':
     # for ind in order[::-1][:n]:
     #     print(f"Dist: {distanceToOthers[ind]:.5f} Context: {contexts[ind]}")
 
-    ################ Create stories ################
+    ################ Create stories with logical connectives ################
     # use model and after a sentence use a logical connective and feed it in with that
-    prompt = '''[WP] You are a fresh junior researcher at NASA. While out for drinks with your new boss, you jokingly ask her why NASA hasn't explored the ocean with its resources. She turns pale and leans in close, then whispers, "We have. Why do you think we want to leave the planet so badly?'''
+    prompt = '''[WP] You’ve been stuck in a time loop that repeats the same day over and over. You’ve perfected every skill, you speak every language ever spoken. One day you go crazy, by the end of the day the entire town is dead. You wake up the next morning still covered in blood, the loop finally broke.'''
     # NOTE sentences can end with: . ." ! !" ? ?"
-    log_connectives = ["So", "But", "Then", "Yet", "Thereafter", "Meanwhile", "Suddenly", "Surprisingly", "Mysteriously", "Nonetheless", "Nevertheless"]
-    story = pred.generate_story(prompt, log_connectives, max_sentences=8)
+    log_connectives = ["So", "But", "Then", "Yet", "Thereafter", "Meanwhile", "Suddenly", "Surprisingly", "Mysteriously", "Nonetheless", "Nevertheless", "Similarly"]
+    start_time = time.time()
+    story = pred.generate_story_with_connectives(prompt, log_connectives, max_sentences=8)
+    print(f"{time.time() - start_time} seconds")
     print(story)
+
+    ################ Generate story from a NOC story prompt ################
+    # nocPrompt = '''You’ve been stuck in a time loop that repeats the same day over and over. You’ve perfected every skill, you speak every language ever spoken. One day you go crazy, by the end of the day the entire town is dead. You wake up the next morning still covered in blood, the loop finally broke.'''
+    # # promptWithNudge = nocPrompt + "\n[Prompt]"
+    # promptWithNudge = "[Prompt] " + nocPrompt + "\n"
+    # start_time = time.time()
+    # story = pred.generate_story(promptWithNudge, numTokens=300)
+    # print(f"{time.time()-start_time} seconds")
+    # print(story)
