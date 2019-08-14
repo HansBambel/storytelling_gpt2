@@ -12,6 +12,7 @@ import time
 from scipy.spatial.distance import cdist
 import pytorch_transformers
 
+
 class Pred():
 
     def __init__(self, model_name, filename=None):
@@ -183,7 +184,7 @@ class Pred():
 
         return most_likely_words, best_probabilities
 
-    def generate_story_with_connectives(self, prompt, log_con, max_sentences=8):
+    def generate_story_with_connectives(self, prompt, log_con, max_sentences=8, top_p=0.9):
         output = prompt + "\n"
         # generate until max sentences are reached or endoftext
         pbar = tqdm(total=max_sentences)
@@ -193,25 +194,28 @@ class Pred():
             end_of_sentence = False
             while not end_of_sentence:
                 logits = self.model.predict(output)
-                random_sample = top_p_sample(logits, top_p=0.9)
+                random_sample = top_p_sample(logits, top_p=top_p)
                 next_word = self.model.tokenizer.decode(random_sample.item())
                 output += next_word
                 # check if last things in output are end of sentence
                 if ("." in output[-2:]) or ("?" in output[-2:]) or ("!" in output[-2:]):
                     end_of_sentence = True
             sentence_count +=1
+            # Add a connective
             if (sentence_count < max_sentences) and (sentence_count%2 == 0):
                 output += " " + np.random.choice(log_con)
             pbar.update(1)
         pbar.close()
         return output
 
-    def generate_story(self, prompt, numTokens):
-        output = prompt
+    def generate_story(self, prompt, numTokens, top_p=0.9):
+        output = prompt + "\n"
+
+        pbar = tqdm(total=numTokens)
         currentTokens = 0
         while(True):
             logits = self.model.predict(output)
-            random_sample = top_p_sample(logits, top_p=0.9)
+            random_sample = top_p_sample(logits, top_p=top_p)
             next_token = self.model.tokenizer.decode(random_sample.item())
             output += next_token
             currentTokens += 1
@@ -219,6 +223,8 @@ class Pred():
             if currentTokens > numTokens:
                 if ("." in output[-2:]) or ("?" in output[-2:]) or ("!" in output[-2:]):
                     break
+            pbar.update(1)
+        pbar.close()
         return output
 
 
@@ -239,7 +245,7 @@ def getDistanceToOthers(vector, vectorMatrix, metric="euclidean", pred=None):
 if __name__ == '__main__':
     # model_name = "345M"
     word_file = "data/emotions.txt"
-    model_name = "models/writingprompts_117M"
+    model_name = "models/writingpromptsBig117M_14000steps"
     pred = Pred(model_name)
 
     # NOTE A trailing whitespace gives other output than without
@@ -318,19 +324,17 @@ if __name__ == '__main__':
 
     ################ Create stories with logical connectives ################
     # use model and after a sentence use a logical connective and feed it in with that
-    prompt = '''[WP] You’ve been stuck in a time loop that repeats the same day over and over. You’ve perfected every skill, you speak every language ever spoken. One day you go crazy, by the end of the day the entire town is dead. You wake up the next morning still covered in blood, the loop finally broke.'''
+    prompt = '''[WP] Turns out humanity was alone in the universe because they were way too early to the party. Now, billions of years later aliens find a strange planet, Earth, and begin to unveil the secrets of the first intelligent species.'''
     # NOTE sentences can end with: . ." ! !" ? ?"
-    log_connectives = ["So", "But", "Then", "Yet", "Thereafter", "Meanwhile", "Suddenly", "Surprisingly", "Mysteriously", "Nonetheless", "Nevertheless", "Similarly"]
+    log_connectives = ["Also", "Besides", "Further", "Furthermore", "Moreover", "In addition", "Then", "Equally important", "Another", "Next", "Afterward", "Finally", "Later", "Last", "Lastly", "At last", "Now", "Subsequently", "Then", "When", "Soon", "Thereafter", "After a short time", "In the meantime", "Meanwhile", "On the following day", "Ultimately", "First", "Finally", "Hence", "Next", "Then", "From here on", "To begin with", "Last of all", "After", "Before", "As soon as", "In the end", "For example", "To illustrate", "For instance", "To be specific", "Such as", "Moreover", "Furthermore", "Just as important", "Similarly", "In the same way", "As a result", "Hence", "So", "Accordingly", "As a consequence", "Consequently", "Thus", "Since", "Therefore", "For this reason", "Because of this", "To this end", "For this purpose", "With this in mind", "For this reason", "In the same manner", "Similarly"]
     start_time = time.time()
     story = pred.generate_story_with_connectives(prompt, log_connectives, max_sentences=8)
     print(f"{time.time() - start_time} seconds")
     print(story)
 
-    ################ Generate story from a NOC story prompt ################
-    # nocPrompt = '''You’ve been stuck in a time loop that repeats the same day over and over. You’ve perfected every skill, you speak every language ever spoken. One day you go crazy, by the end of the day the entire town is dead. You wake up the next morning still covered in blood, the loop finally broke.'''
-    # # promptWithNudge = nocPrompt + "\n[Prompt]"
-    # promptWithNudge = "[Prompt] " + nocPrompt + "\n"
+    ################ Generate story from a story prompt ################
+    # promptWithNudge = '''[WP] Turns out humanity was alone in the universe because they were way too early to the party. Now, billions of years later aliens find a strange planet, Earth, and begin to unveil the secrets of the first intelligent species.'''
     # start_time = time.time()
-    # story = pred.generate_story(promptWithNudge, numTokens=300)
+    # story = pred.generate_story(promptWithNudge, numTokens=120)
     # print(f"{time.time()-start_time} seconds")
     # print(story)
