@@ -20,7 +20,7 @@ from __future__ import absolute_import, division, print_function, unicode_litera
 
 import argparse
 import logging
-from tqdm import trange
+from tqdm import trange, tqdm
 
 import torch
 import torch.nn.functional as F
@@ -135,7 +135,8 @@ def sample_sequence_with_connectives(model, length, context, connectives, num_sa
     sentence_count = torch.tensor(0, dtype=torch.int, device=device)
     generated = context
     with torch.no_grad():
-        # for _ in trange(length):
+        # Generate length number of sentences
+        pbar = tqdm(total=length)
         while sentence_count < length:
             end_of_sentence = torch.tensor(0, dtype=torch.int8)
             while end_of_sentence == 0:
@@ -152,12 +153,16 @@ def sample_sequence_with_connectives(model, length, context, connectives, num_sa
                     end_of_sentence = 1
             sentence_count += 1
             if (sentence_count < length) and (sentence_count%2 == 0):
-                # select the connective with the highest probability and add it
+                # get the top n connectives and select one randomly
+                top_n = 3
                 outputs = model(**inputs)  # Make a forward pass
                 next_token_logits = outputs[0][0, -1, :] / temperature
                 probs = F.softmax(next_token_logits, dim=-1)
-                best_connective = connectives[torch.argmax(probs[connectives])]
-                generated = torch.cat((generated, best_connective.unsqueeze(0)), dim=1)
+                best_connectives = connectives[torch.argsort(probs[connectives].squeeze(), descending=True)[:top_n]]
+                chosen_connective = best_connectives[torch.randint(low=0, high=len(best_connectives), size=(1,))]
+                generated = torch.cat((generated, chosen_connective), dim=1)
+            pbar.update(1)
+        pbar.close()
     return generated
 
 
@@ -195,8 +200,8 @@ def main():
     args.seed = np.random.randint(1000000)
     args.model_type = 'gpt2'
     args.model_name_or_path = 'models/writingpromptsBig117M_10000steps'
-    args.prompt = '''What if Catwoman fell in love with Popeye?
-Catwoman loved food but could not even boil water properly.'''
+    args.prompt = '''What if Britney Spears fell in love with Mickey Mouse?
+Britney Spears called in favors to get this position.'''
     args.top_p = 0.9
     args.length = 12
 
@@ -223,7 +228,7 @@ Catwoman loved food but could not even boil water properly.'''
 
     tokenized_connectives = [tokenizer.encode(". " + con)[1:] for con in log_connectives]
     single_tokens = [tokenizer.decode(con) for con in tokenized_connectives if len(con) == 1]
-    multi_tokens = [tokenizer.decode(con) for con in tokenized_connectives if len(con) > 1]
+    # multi_tokens = [tokenizer.decode(con) for con in tokenized_connectives if len(con) > 1]
     tokenized_single_tokens = torch.tensor([tokenizer.encode("."+con)[1:] for con in single_tokens], dtype=torch.long, device=args.device)
     # sentence_end_tokens = [tokenizer.encode(con) for con in [".", "!", "?", ".\"", "!\"", "?\""]]
 
