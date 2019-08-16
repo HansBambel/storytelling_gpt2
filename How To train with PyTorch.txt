@@ -5,7 +5,7 @@ A) Without Docker
 3. Install the requirements of the requirements.txt
 	a. This can be done with anaconda or pip (e.g.:pip install tqdm) (I used a conda environment "gpt-2" that was a clone of the basic python env) "conda create --name gpt-2 --clone base"
 	b. Install pytorch-transformers (pip install pytorch-transformers)
-		Note: On the cluster we dont have permission to install packages --> use "pip3 --user install pytorch-transformers" to install packages
+		Note: On the cluster we dont have permission to install packages for all users, but for yourself --> use "pip3 install --user pytorch-transformers" to install packages
 	
 B) With Docker
 1. Install Docker
