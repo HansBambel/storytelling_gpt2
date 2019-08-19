@@ -6,6 +6,3 @@ WORKDIR /gpt2
 
 # Copy the current directory contents into the container at /app
 # COPY . /gpt2
-
-# Run application.py when the container launches
-# CMD ["python", "application.py"]
