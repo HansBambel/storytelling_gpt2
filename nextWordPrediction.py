@@ -162,8 +162,8 @@ def main():
     args.model_type = 'gpt2'
     model_name_or_path = "gpt2-medium"
     numWords = 10
-    context = "Global warming is a"
-    filter = False
+    context = "Global warming is"
+    filter = True
     no_cuda = True
 
 
@@ -196,11 +196,20 @@ def main():
     )
     print(f"This took {time.time()-start_time:.3f} seconds")
     probvector = np.array(probvector).squeeze()
-    # TODO if filter words --> recalc probs
+    # if filter words --> set other token prob to 0 and recalc probabilities
+    if filter:
+        mask = np.ones_like(probvector, dtype=np.bool)
+        mask[tokenized_single_emotions.squeeze()] = 0
+        probvector[mask] = 0
+        probvector /= np.sum(probvector)
+
     sorted_wordvector = np.argsort(probvector)[::-1]
     print(context)
-    for i in range(numWords):
-        print(f"with prob {probvector[sorted_wordvector[i]]*100:.3f}%: {tokenizer.decode([sorted_wordvector[i]])}")
+    for i, ind in enumerate(sorted_wordvector):
+        print(f"with prob {probvector[ind]*100:6.3f}%: {tokenizer.decode([ind])}")
+        # print only the specified number of words
+        if i == numWords:
+            break
 
 if __name__ == '__main__':
     main()
