@@ -160,10 +160,10 @@ def main():
     # args.seed = np.random.randint(1000000)
     args.seed = 1337
     args.model_type = 'gpt2'
-    model_name_or_path = "gpt2-medium"
+    model_name_or_path = "models/gpt-2-large"
     numWords = 10
-    context = "Global warming is"
-    filter = True
+    context = "Global warming is a"
+    filter = False
     no_cuda = True
 
 

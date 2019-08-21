@@ -148,7 +148,8 @@ def main():
     # args.seed = np.random.randint(1000000)
     args.seed = 1337
     args.model_type = 'gpt2'
-    model_name_or_path = "gpt2-medium"
+    # model_name_or_path = "gpt2-medium"
+    model_name_or_path = "models/gpt-2-large"
 
 
     args.device = torch.device("cuda" if torch.cuda.is_available() and not args.no_cuda else "cpu")
