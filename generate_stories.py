@@ -42,11 +42,11 @@ MODEL_CLASSES = {
 
 
 
-def set_seed(args):
-    np.random.seed(args.seed)
-    torch.manual_seed(args.seed)
-    if args.n_gpu > 0:
-        torch.cuda.manual_seed_all(args.seed)
+def set_seed(seed, n_gpu):
+    np.random.seed(seed)
+    torch.manual_seed(seed)
+    if n_gpu > 0:
+        torch.cuda.manual_seed_all(seed)
 
 
 def top_k_top_p_filtering(logits, top_k=0, top_p=0.0, filter_value=-float('Inf')):
@@ -150,23 +150,6 @@ def sample_sequence_with_connectives(model, length, context, connectives, num_sa
 
 
 def main():
-    parser = argparse.ArgumentParser()
-    # parser.add_argument("--model_type", default=None, type=str, required=True,
-    #                     help="Model type selected in the list: " + ", ".join(MODEL_CLASSES.keys()))
-    # parser.add_argument("--model_name_or_path", default=None, type=str, required=True,
-    #                     help="Path to pre-trained model or shortcut name selected in the list: " + ", ".join(ALL_MODELS))
-    parser.add_argument("--prompt", type=str, default="")
-    parser.add_argument("--padding_text", type=str, default="")
-    parser.add_argument("--length", type=int, default=150)
-    parser.add_argument("--temperature", type=float, default=1.0)
-    parser.add_argument("--top_k", type=int, default=0)
-    parser.add_argument("--top_p", type=float, default=0.9)
-    parser.add_argument("--no_cuda", action='store_true',
-                        help="Avoid using CUDA when available")
-    parser.add_argument('--seed', type=int, default=42,
-                        help="random seed for initialization")
-    args = parser.parse_args()
-
     # Convert connectives to tokens
     log_connectives = ["Also", "Besides", "Further", "But", "Suddenly", "Furthermore", "Moreover", "In addition",
                         "Equally important", "Another", "Next", "Afterward", "Finally", "Later", "Last", "Lastly",
@@ -180,79 +163,76 @@ def main():
                         "With this in mind", "For this reason", "In the same manner", "Similarly"]
 
     # My Configs
-    # args.seed = np.random.randint(1000000)
-    args.seed = 1337
-    args.model_type = 'gpt2'
-    # model_name_or_path = 'models/writingpromptsBig117M_14000steps'
-    model_name_or_path = 'models/gpt-2-large'
+    # seed = np.random.randint(1000000)
+    seed = 1337
+    model_type = 'gpt2'
+    # model_name_or_path = 'models/writingpromptsBig117M_10000steps'
+    model_name_or_path = 'models/tingle117M_4000steps'
+    # model_name_or_path = 'models/gpt-2-large'
     # model_name_or_path = "gpt2"
-    args.prompt = \
-        '''Earth is doomed in a matter of years, but you are bestowed with a mystical dagger that causes anyone killed by it to instantly resurrect on an alternate Earth that does not share the same fate. In one world you are revered as a hero, on the other the most notorious serial killer of all time.'''
-    args.top_p = 0.9
-    args.length = 12
+    prompt = "After years of torture, Quinton finally learns"
+    # prompt = "<|endoftext|>"
+    top_p = 0.9
+    length = 12
+    no_cuda = False
 
 
-    args.device = torch.device("cuda" if torch.cuda.is_available() and not args.no_cuda else "cpu")
-    args.n_gpu = torch.cuda.device_count()
+    device = torch.device("cuda" if torch.cuda.is_available() and not no_cuda else "cpu")
+    n_gpu = torch.cuda.device_count()
 
-    set_seed(args)
+    set_seed(seed, n_gpu)
 
-    args.model_type = args.model_type.lower()
-    model_class, tokenizer_class = MODEL_CLASSES[args.model_type]
+    model_type = model_type.lower()
+    model_class, tokenizer_class = MODEL_CLASSES[model_type]
     # tokenizer is not loaded converted model --> workaround: use vanilla tokenizer
     tokenizer = tokenizer_class.from_pretrained("gpt2")
     model = model_class.from_pretrained(model_name_or_path)
-    model.to(args.device)
+    model.to(device)
     model.eval()
 
-    if args.length < 0 and model.config.max_position_embeddings > 0:
-        args.length = model.config.max_position_embeddings
-    elif 0 < model.config.max_position_embeddings < args.length:
-        args.length = model.config.max_position_embeddings  # No generation bigger than model size
-    elif args.length < 0:
-        args.length = MAX_LENGTH  # avoid infinite loop
+    if length < 0 and model.config.max_position_embeddings > 0:
+        length = model.config.max_position_embeddings
+    elif 0 < model.config.max_position_embeddings < length:
+        length = model.config.max_position_embeddings  # No generation bigger than model size
+    elif length < 0:
+        length = MAX_LENGTH  # avoid infinite loop
 
     tokenized_connectives = [tokenizer.encode(". " + con)[1:] for con in log_connectives]
     single_tokens = [tokenizer.decode(con) for con in tokenized_connectives if len(con) == 1]
     # multi_tokens = [tokenizer.decode(con) for con in tokenized_connectives if len(con) > 1]
-    tokenized_single_tokens = torch.tensor([tokenizer.encode("."+con)[1:] for con in single_tokens], dtype=torch.long, device=args.device)
+    tokenized_single_tokens = torch.tensor([tokenizer.encode("."+con)[1:] for con in single_tokens], dtype=torch.long, device=device)
     # sentence_end_tokens = [tokenizer.encode(con) for con in [".", "!", "?", ".\"", "!\"", "?\"", "<|endoftext|>"]]
 
-    print(args)
     while True:
-        raw_text = args.prompt if args.prompt else input("Model prompt >>> ")
+        raw_text = prompt if prompt else input("Model prompt >>> ")
         context_tokens = tokenizer.encode(raw_text)
 
         out = sample_sequence(
             model=model,
             context=context_tokens,
-            length=args.length,
-            temperature=args.temperature,
-            top_k=args.top_k,
-            top_p=args.top_p,
-            device=args.device,
+            length=length,
+            top_p=top_p,
+            device=device,
         )
         out = out[0, len(context_tokens):].tolist()
         text = tokenizer.decode(out, clean_up_tokenization_spaces=True)
         print(f"Story without connectives. Model: {model_name_or_path}")
         print(text)
 
-        set_seed(args)
+        set_seed(seed, n_gpu)
         out = sample_sequence_with_connectives(
             model=model,
             context=context_tokens,
-            length=args.length,
-            temperature=args.temperature,
-            top_k=args.top_k,
-            top_p=args.top_p,
-            device=args.device,
+            length=length,
+            top_p=top_p,
+            device=device,
             connectives=tokenized_single_tokens,
         )
         out = out[0, len(context_tokens):].tolist()
         text = tokenizer.decode(out, clean_up_tokenization_spaces=True)
-        print("Story with connectives. Model: {model_name_or_path}")
+        print(f"Story with connectives. Model: {model_name_or_path}")
         print(text)
-        if args.prompt:
+        if prompt:
             break
     return text
 
