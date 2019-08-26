@@ -18,8 +18,7 @@
 """
 from __future__ import absolute_import, division, print_function, unicode_literals
 
-import argparse
-import logging
+import os
 from tqdm import trange, tqdm
 
 import torch
@@ -29,13 +28,7 @@ import numpy as np
 from pytorch_transformers import GPT2LMHeadModel, GPT2Tokenizer
 
 
-logging.basicConfig(format = '%(asctime)s - %(levelname)s - %(name)s -   %(message)s',
-                    datefmt = '%m/%d/%Y %H:%M:%S',
-                    level = logging.INFO)
-logger = logging.getLogger(__name__)
-
 MAX_LENGTH = int(10000)  # Hardcoded max length to avoid infinite loop
-
 
 
 
@@ -159,10 +152,14 @@ def main():
     # My Configs
     seed = np.random.randint(1000000)
     # seed = 1337
-    model_name_or_path = 'models/scealextric117M'
-    # model_name_or_path = 'models/gpt-2-large'
+    # model_name_or_path = 'models/scealextric_paragraphs117M_6000steps'
+    # model_name_or_path = 'models/tingle117M_6000steps'
+    model_name_or_path = 'models/gpt-2-large'
     # model_name_or_path = "gpt2"
-    prompt = \
+    if not os.path.isdir(model_name_or_path):
+        raise ValueError(f"Model folder not found: {model_name_or_path}")
+    # Padding text that is put so that the model can use something to focus on, but the <|endoftext|> token restricts using something
+    padding_text = \
         '''Earth is doomed in a matter of years, but you are bestowed with a mystical dagger that causes anyone killed by it to instantly resurrect on an alternate Earth that does not share the same fate. In one world you are revered as a hero, on the other the most notorious serial killer of all time.'''
     top_p = 0.9
     introduction_sentences = 4
@@ -198,14 +195,15 @@ def main():
     # print(args)
     # Tprint the first n sentences and then ask for user input
     # 50256 is <|endoftext|>
+    context_tokens = tokenizer.encode(padding_text + "<|endoftext|>")
     tokenized_story = sample_sequence(
         model=model,
-        context=[50256],
+        context=context_tokens,
         length=introduction_sentences,
         top_p=top_p,
         device=device,
     )
-    tokenized_story = tokenized_story[0, 1:].tolist()
+    tokenized_story = tokenized_story[0, len(context_tokens):].tolist()
     print(tokenizer.decode(tokenized_story))
 
     while True:

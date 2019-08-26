@@ -19,7 +19,6 @@
 from __future__ import absolute_import, division, print_function, unicode_literals
 
 import argparse
-import logging
 from tqdm import trange, tqdm
 import time
 
@@ -30,11 +29,6 @@ import pickle
 
 from pytorch_transformers import GPT2LMHeadModel, GPT2Tokenizer
 
-
-logging.basicConfig(format = '%(asctime)s - %(levelname)s - %(name)s -   %(message)s',
-                    datefmt = '%m/%d/%Y %H:%M:%S',
-                    level = logging.INFO)
-logger = logging.getLogger(__name__)
 
 MAX_LENGTH = int(10000)  # Hardcoded max length to avoid infinite loop
 

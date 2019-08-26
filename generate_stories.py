@@ -18,8 +18,6 @@
 """
 from __future__ import absolute_import, division, print_function, unicode_literals
 
-import argparse
-import logging
 from tqdm import trange, tqdm
 
 import torch
@@ -28,11 +26,6 @@ import numpy as np
 
 from pytorch_transformers import GPT2LMHeadModel, GPT2Tokenizer
 
-
-logging.basicConfig(format = '%(asctime)s - %(levelname)s - %(name)s -   %(message)s',
-                    datefmt = '%m/%d/%Y %H:%M:%S',
-                    level = logging.INFO)
-logger = logging.getLogger(__name__)
 
 MAX_LENGTH = int(10000)  # Hardcoded max length to avoid infinite loop
 
@@ -164,14 +157,14 @@ def main():
 
     # My Configs
     # seed = np.random.randint(1000000)
-    seed = 1337
+    seed = 42
     model_type = 'gpt2'
-    # model_name_or_path = 'models/writingpromptsBig117M_10000steps'
-    model_name_or_path = 'models/tingle117M_4000steps'
+    model_name_or_path = 'models/writingpromptsBig117M_6000steps'
+    # model_name_or_path = 'models/tingle117M_6000steps'
     # model_name_or_path = 'models/gpt-2-large'
     # model_name_or_path = "gpt2"
-    prompt = "After years of torture, Quinton finally learns"
-    # prompt = "<|endoftext|>"
+    # prompt = "After years of torture, Quinton finally learns"
+    prompt = "<|endoftext|>"
     top_p = 0.9
     length = 12
     no_cuda = False
