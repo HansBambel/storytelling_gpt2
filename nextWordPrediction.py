@@ -37,12 +37,11 @@ MODEL_CLASSES = {
 }
 
 
-
-def set_seed(args):
-    np.random.seed(args.seed)
-    torch.manual_seed(args.seed)
-    if args.n_gpu > 0:
-        torch.cuda.manual_seed_all(args.seed)
+def set_seed(seed, n_gpu):
+    np.random.seed(seed)
+    torch.manual_seed(seed)
+    if n_gpu > 0:
+        torch.cuda.manual_seed_all(seed)
 
 
 def top_k_top_p_filtering(logits, top_k=0, top_p=0.0, filter_value=-float('Inf')):
@@ -128,57 +127,41 @@ def getNextWordProb(model, context, device=torch.device('cpu')):
     return probs.cpu()
 
 def main():
-    parser = argparse.ArgumentParser()
-    # parser.add_argument("--model_type", default=None, type=str, required=True,
-    #                     help="Model type selected in the list: " + ", ".join(MODEL_CLASSES.keys()))
-    # parser.add_argument("--model_name_or_path", default=None, type=str, required=True,
-    #                     help="Path to pre-trained model or shortcut name selected in the list: " + ", ".join(ALL_MODELS))
-    parser.add_argument("--prompt", type=str, default="")
-    parser.add_argument("--padding_text", type=str, default="")
-    parser.add_argument("--length", type=int, default=150)
-    parser.add_argument("--temperature", type=float, default=1.0)
-    parser.add_argument("--top_k", type=int, default=0)
-    parser.add_argument("--top_p", type=float, default=0.9)
-    parser.add_argument("--no_cuda", action='store_true',
-                        help="Avoid using CUDA when available")
-    parser.add_argument('--seed', type=int, default=42,
-                        help="random seed for initialization")
-    args = parser.parse_args()
-
-    # Convert emotions to tokens
+    # Load words to filter
     with open("data/emotions.txt", "r") as f:
         emotions = f.readlines()
     emotions = [emo.strip() for emo in emotions]
 
     # My Configs
     # args.seed = np.random.randint(1000000)
-    args.seed = 1337
-    args.model_type = 'gpt2'
-    model_name_or_path = "models/gpt-2-large"
+    seed = 1337
+    model_type = 'gpt2'
+    # model_name_or_path = "models/gpt-2-large"
+    model_name_or_path = "gpt2-medium"
     numWords = 10
     context = "Global warming is a"
     filter = False
     no_cuda = True
 
 
-    args.device = torch.device("cuda" if torch.cuda.is_available() and not no_cuda else "cpu")
-    args.n_gpu = torch.cuda.device_count()
+    device = torch.device("cuda" if torch.cuda.is_available() and not no_cuda else "cpu")
+    n_gpu = torch.cuda.device_count()
 
-    set_seed(args)
+    set_seed(seed, n_gpu)
 
-    args.model_type = args.model_type.lower()
-    model_class, tokenizer_class = MODEL_CLASSES[args.model_type]
+    model_type = model_type.lower()
+    model_class, tokenizer_class = MODEL_CLASSES[model_type]
     # tokenizer is not loaded converted model --> workaround: use vanilla tokenizer
     tokenizer = tokenizer_class.from_pretrained("gpt2-medium")
     model = model_class.from_pretrained(model_name_or_path)
-    model.to(args.device)
+    model.to(device)
     model.eval()
 
 
     tokenized_emotions = [tokenizer.encode(". " + con)[1:] for con in emotions]
     single_token_emotions = [tokenizer.decode(con) for con in tokenized_emotions if len(con) == 1]
     # multi_tokens = [tokenizer.decode(con) for con in tokenized_connectives if len(con) > 1]
-    tokenized_single_emotions = torch.tensor([tokenizer.encode("."+con)[1:] for con in single_token_emotions], dtype=torch.long, device=args.device)
+    tokenized_single_emotions = torch.tensor([tokenizer.encode("."+con)[1:] for con in single_token_emotions], dtype=torch.long, device=device)
 
     start_time = time.time()
     context_tokens = tokenizer.encode(context)
@@ -186,7 +169,7 @@ def main():
     probvector = getNextWordProb(
         model=model,
         context=context_tokens,
-        device=args.device,
+        device=device,
     )
     print(f"This took {time.time()-start_time:.3f} seconds")
     probvector = np.array(probvector).squeeze()

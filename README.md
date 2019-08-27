@@ -1,3 +1,25 @@
+## Usage
+- `generate_stories.py`
+    - Generates stories using a model that was specified in `model_name_or_path`.
+    - `prompt` can be given or left blank to generate stories with given prompt.
+    - `length` is the number of sentences that are generated.
+    - Two stories are generated for each prompt: One using logical connectives (specified in `log_connectives`) and one without
+    - `no_cuda` if set to `True` forces usage of cpu
+    - `seed` can be fixed for reproducibility
+- `generate_interactive_story.py`
+    - Generates stories using a model that was specified in `model_name_or_path`.
+    - `prompt` can be given or left blank to generate stories with given prompt.
+    - `introduction_sentences` is the number of sentences that are generated before user input is asked
+    - `no_cuda` if set to `True` forces usage of cpu
+    - `seed` can be fixed for reproducibility
+- `wordvectors.py`
+    - generates wordvectors of the words given in `emotions`. In our case we used emotions specified in `data/emotions.txt`
+        - Only words that are encoded as single tokens are regarded as probabilities of multi-token-words are not comparable with single-token-words
+    - wordvectors are then computed for every single entry in `prompts` and saved in a pickle file specified in `line 172`
+- `nextWordPrediction.py`
+    - Outputs a given `context` the top `numWords` with probabilities
+    - Model specified in `model_name_or_path` is used
+    - Optional: set `filter` to `True` to filter words out. In our case we used emotions specified in `data/emotions.txt`
 
 ### Set-up ###
 ##### A) Without Docker

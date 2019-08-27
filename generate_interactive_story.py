@@ -29,7 +29,11 @@ from pytorch_transformers import GPT2LMHeadModel, GPT2Tokenizer
 
 
 MAX_LENGTH = int(10000)  # Hardcoded max length to avoid infinite loop
-
+# Padding text that is put so that the model can use something to focus on,
+# but the <|endoftext|> token restricts using something from the text
+PADDING_TEXT = '''Earth is doomed in a matter of years, but you are bestowed with a mystical dagger that causes anyone 
+                killed by it to instantly resurrect on an alternate Earth that does not share the same fate. 
+                In one world you are revered as a hero, on the other the most notorious serial killer of all time.<|endoftext|>'''
 
 
 def set_seed(seed, n_gpu):
@@ -150,19 +154,18 @@ def main():
                         "With this in mind", "For this reason", "In the same manner", "Similarly"]
 
     # My Configs
-    seed = np.random.randint(1000000)
-    # seed = 1337
-    # model_name_or_path = 'models/scealextric_paragraphs117M_6000steps'
+    # seed = np.random.randint(1000000)
+    seed = 3
+    model_name_or_path = 'models/scealextric_linebreaks117M_6000steps'
     # model_name_or_path = 'models/tingle117M_6000steps'
-    model_name_or_path = 'models/gpt-2-large'
+    # model_name_or_path = 'models/gpt-2-large'
     # model_name_or_path = "gpt2"
-    if not os.path.isdir(model_name_or_path):
-        raise ValueError(f"Model folder not found: {model_name_or_path}")
-    # Padding text that is put so that the model can use something to focus on, but the <|endoftext|> token restricts using something
-    padding_text = \
-        '''Earth is doomed in a matter of years, but you are bestowed with a mystical dagger that causes anyone killed by it to instantly resurrect on an alternate Earth that does not share the same fate. In one world you are revered as a hero, on the other the most notorious serial killer of all time.'''
+    if model_name_or_path not in ["gpt2", "gpt2-medium"]:
+        if not os.path.isdir(model_name_or_path):
+            raise ValueError(f"Model folder not found: {model_name_or_path}")
     top_p = 0.9
     introduction_sentences = 4
+    prompt = ""
     no_cuda = False
 
 
@@ -192,10 +195,8 @@ def main():
     tokenized_single_tokens = torch.tensor([tokenizer.encode("."+con)[1:] for con in single_tokens], dtype=torch.long, device=device)
     # sentence_end_tokens = [tokenizer.encode(con) for con in [".", "!", "?", ".\"", "!\"", "?\"", "<|endoftext|>"]]
 
-    # print(args)
-    # Tprint the first n sentences and then ask for user input
-    # 50256 is <|endoftext|>
-    context_tokens = tokenizer.encode(padding_text + "<|endoftext|>")
+    # print the first n sentences and then ask for user input
+    context_tokens = tokenizer.encode(PADDING_TEXT + prompt)
     tokenized_story = sample_sequence(
         model=model,
         context=context_tokens,
@@ -204,10 +205,12 @@ def main():
         device=device,
     )
     tokenized_story = tokenized_story[0, len(context_tokens):].tolist()
+    print(">>> Story can be continued by writing something or left blank <<<")
+    print("Seed=", seed, "Prompt: ", prompt)
     print(tokenizer.decode(tokenized_story))
 
     while True:
-        user_input = input("Continue the story (blank will continue for itself) >>> ")
+        user_input = input(">>> ")
         if user_input == "":
             context_tokens = tokenized_story
         else:
@@ -223,7 +226,7 @@ def main():
         out = out[0, len(context_tokens):].tolist()
         tokenized_story += out
         text = tokenizer.decode(out, clean_up_tokenization_spaces=True)
-        print(text)
+        print(text.strip())
 
 
 if __name__ == '__main__':

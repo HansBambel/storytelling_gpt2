@@ -18,7 +18,6 @@
 """
 from __future__ import absolute_import, division, print_function, unicode_literals
 
-import argparse
 import logging
 from tqdm import trange, tqdm
 
@@ -43,11 +42,11 @@ MODEL_CLASSES = {
 
 
 
-def set_seed(args):
-    np.random.seed(args.seed)
-    torch.manual_seed(args.seed)
-    if args.n_gpu > 0:
-        torch.cuda.manual_seed_all(args.seed)
+def set_seed(seed, n_gpu):
+    np.random.seed(seed)
+    torch.manual_seed(seed)
+    if n_gpu > 0:
+        torch.cuda.manual_seed_all(seed)
 
 
 def top_k_top_p_filtering(logits, top_k=0, top_p=0.0, filter_value=-float('Inf')):
@@ -80,7 +79,7 @@ def top_k_top_p_filtering(logits, top_k=0, top_p=0.0, filter_value=-float('Inf')
         logits[indices_to_remove] = filter_value
     return logits
 
-def calc_wordvector(model, words, context, device='cpu'):
+def calc_wordvector(model, words, context, device=torch.device('cpu')):
     context = torch.tensor(context, dtype=torch.long, device=device)
     context = context.unsqueeze(0)
     with torch.no_grad():
@@ -122,22 +121,6 @@ def sample_sequence(model, length, context, num_samples=1, temperature=1, top_k=
     return generated
 
 def main():
-    parser = argparse.ArgumentParser()
-    # parser.add_argument("--model_type", default=None, type=str, required=True,
-    #                     help="Model type selected in the list: " + ", ".join(MODEL_CLASSES.keys()))
-    # parser.add_argument("--model_name_or_path", default=None, type=str, required=True,
-    #                     help="Path to pre-trained model or shortcut name selected in the list: " + ", ".join(ALL_MODELS))
-    parser.add_argument("--prompt", type=str, default="")
-    parser.add_argument("--padding_text", type=str, default="")
-    parser.add_argument("--length", type=int, default=150)
-    parser.add_argument("--temperature", type=float, default=1.0)
-    parser.add_argument("--top_k", type=int, default=0)
-    parser.add_argument("--top_p", type=float, default=0.9)
-    parser.add_argument("--no_cuda", action='store_true',
-                        help="Avoid using CUDA when available")
-    parser.add_argument('--seed', type=int, default=42,
-                        help="random seed for initialization")
-    args = parser.parse_args()
 
     # Convert emotions to tokens
     with open("data/emotions.txt", "r") as f:
@@ -146,30 +129,31 @@ def main():
 
     # My Configs
     # args.seed = np.random.randint(1000000)
-    args.seed = 1337
-    args.model_type = 'gpt2'
+    seed = 1337
+    model_type = 'gpt2'
     # model_name_or_path = "gpt2-medium"
     model_name_or_path = "models/gpt-2-large"
+    no_cuda = False
 
 
-    args.device = torch.device("cuda" if torch.cuda.is_available() and not args.no_cuda else "cpu")
-    args.n_gpu = torch.cuda.device_count()
+    device = torch.device("cuda" if torch.cuda.is_available() and not no_cuda else "cpu")
+    n_gpu = torch.cuda.device_count()
 
-    set_seed(args)
+    set_seed(seed, n_gpu)
 
-    args.model_type = args.model_type.lower()
-    model_class, tokenizer_class = MODEL_CLASSES[args.model_type]
+    model_type = model_type.lower()
+    model_class, tokenizer_class = MODEL_CLASSES[model_type]
     # tokenizer is not loaded converted model --> workaround: use vanilla tokenizer
     tokenizer = tokenizer_class.from_pretrained("gpt2-medium")
     model = model_class.from_pretrained(model_name_or_path)
-    model.to(args.device)
+    model.to(device)
     model.eval()
 
 
     tokenized_emotions = [tokenizer.encode(". " + con)[1:] for con in emotions]
     single_token_emotions = [tokenizer.decode(con) for con in tokenized_emotions if len(con) == 1]
     # multi_tokens = [tokenizer.decode(con) for con in tokenized_connectives if len(con) > 1]
-    tokenized_single_emotions = torch.tensor([tokenizer.encode("."+con)[1:] for con in single_token_emotions], dtype=torch.long, device=args.device)
+    tokenized_single_emotions = torch.tensor([tokenizer.encode("."+con)[1:] for con in single_token_emotions], dtype=torch.long, device=device)
 
     with open("data/GPT prompts.txt", "r", encoding="utf-8") as f:
         prompts = f.readlines()
@@ -182,10 +166,10 @@ def main():
             model=model,
             words=tokenized_single_emotions,
             context=context_tokens,
-            device=args.device,
+            device=device,
         )
         wordvectors[i] = np.array(wordvector.cpu().squeeze())
-    with open("data/wordvectors_new.pkl", "wb") as wvf:
+    with open("data/wordvectors_774M.pkl", "wb") as wvf:
         # Save wordvectors
         pickle.dump(wordvectors, wvf)
 

@@ -32,7 +32,9 @@ MAX_LENGTH = int(10000)  # Hardcoded max length to avoid infinite loop
 MODEL_CLASSES = {
     'gpt2': (GPT2LMHeadModel, GPT2Tokenizer)
 }
-
+PADDING_TEXT = '''Earth is doomed in a matter of years, but you are bestowed with a mystical dagger that causes anyone 
+                killed by it to instantly resurrect on an alternate Earth that does not share the same fate. 
+                In one world you are revered as a hero, on the other the most notorious serial killer of all time.<|endoftext|>'''
 
 
 def set_seed(seed, n_gpu):
@@ -157,16 +159,17 @@ def main():
 
     # My Configs
     # seed = np.random.randint(1000000)
-    seed = 42
+    seed = 3
     model_type = 'gpt2'
-    model_name_or_path = 'models/writingpromptsBig117M_6000steps'
+    # model_name_or_path = 'models/writingpromptsBig117M_6000steps'
+    model_name_or_path = 'models/scealextric_linebreaks117M_6000steps'
     # model_name_or_path = 'models/tingle117M_6000steps'
     # model_name_or_path = 'models/gpt-2-large'
     # model_name_or_path = "gpt2"
     # prompt = "After years of torture, Quinton finally learns"
-    prompt = "<|endoftext|>"
+    prompt = PADDING_TEXT
     top_p = 0.9
-    length = 12
+    length = 20
     no_cuda = False
 
 
