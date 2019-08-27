@@ -155,8 +155,9 @@ def main():
 
     # My Configs
     # seed = np.random.randint(1000000)
-    seed = 3
-    model_name_or_path = 'models/scealextric_linebreaks117M_6000steps'
+    seed = 2
+    # model_name_or_path = 'models/scealextric_linebreaks117M_6000steps'
+    model_name_or_path = 'models/writingpromptsBig117M_6000steps'
     # model_name_or_path = 'models/tingle117M_6000steps'
     # model_name_or_path = 'models/gpt-2-large'
     # model_name_or_path = "gpt2"
@@ -206,7 +207,7 @@ def main():
     )
     tokenized_story = tokenized_story[0, len(context_tokens):].tolist()
     print(">>> Story can be continued by writing something or left blank <<<")
-    print("Seed=", seed, "Prompt: ", prompt)
+    print(f"Seed={seed} Prompt: \"{prompt}\"")
     print(tokenizer.decode(tokenized_story))
 
     while True:

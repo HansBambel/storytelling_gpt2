@@ -86,6 +86,7 @@ def sample_sequence(model, length, context, num_samples=1, temperature=1, top_k=
         # Generate length number of sentences
         pbar = tqdm(total=length, desc="Sentences")
         while sentence_count < length:
+            # end_of_sentence is used as bool to flag end of a sentence
             end_of_sentence = torch.tensor(0, dtype=torch.int8)
             while end_of_sentence == 0:
 
@@ -159,7 +160,7 @@ def main():
 
     # My Configs
     # seed = np.random.randint(1000000)
-    seed = 3
+    seed = 6
     model_type = 'gpt2'
     # model_name_or_path = 'models/writingpromptsBig117M_6000steps'
     model_name_or_path = 'models/scealextric_linebreaks117M_6000steps'
