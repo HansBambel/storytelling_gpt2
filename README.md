@@ -21,6 +21,8 @@
     - Model specified in `model_name_or_path` is used
     - Optional: set `filter` to `True` to filter words out. In our case we used emotions specified in `data/emotions.txt`
 
+---
+
 ### Set-up ###
 ##### A) Without Docker
 1. Clone this repository
