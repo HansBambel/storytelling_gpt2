@@ -131,8 +131,9 @@ def main():
     # args.seed = np.random.randint(1000000)
     seed = 1337
     model_type = 'gpt2'
+    model_name_or_path = 'gpt2'
     # model_name_or_path = "gpt2-medium"
-    model_name_or_path = "models/gpt-2-large"
+    # model_name_or_path = "models/gpt-2-large"
     no_cuda = False
 
 
@@ -169,7 +170,7 @@ def main():
             device=device,
         )
         wordvectors[i] = np.array(wordvector.cpu().squeeze())
-    with open("data/wordvectors_774M.pkl", "wb") as wvf:
+    with open("data/wordvectors_117M.pkl", "wb") as wvf:
         # Save wordvectors
         pickle.dump(wordvectors, wvf)
 

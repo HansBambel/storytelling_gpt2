@@ -155,7 +155,7 @@ def main():
 
     # My Configs
     # seed = np.random.randint(1000000)
-    seed = 2
+    seed = 5
     # model_name_or_path = 'models/scealextric_linebreaks117M_6000steps'
     model_name_or_path = 'models/writingpromptsBig117M_6000steps'
     # model_name_or_path = 'models/tingle117M_6000steps'

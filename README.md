@@ -48,6 +48,7 @@
 3. `pytorch_transformers gpt2 $OPENAI_GPT2_CHECKPOINT_PATH $PYTORCH_DUMP_OUTPUT [OPENAI_GPT2_CONFIG]`
 	- e.g.: `python pytorch_transformers gpt2 ..\gpt-2\checkpoint\writingprompts117M ..\nextWordPrediction\models`
 	- Note: I needed to remove the `.` before the import in the `__main__.py` line 72 to make it work
+	- Note2: Converting a 345M and higher requires a config-file of the model
 
 
 ---

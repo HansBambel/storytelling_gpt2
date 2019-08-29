@@ -160,17 +160,17 @@ def main():
 
     # My Configs
     # seed = np.random.randint(1000000)
-    seed = 6
+    seed = 8
     model_type = 'gpt2'
     # model_name_or_path = 'models/writingpromptsBig117M_6000steps'
-    model_name_or_path = 'models/scealextric_linebreaks117M_6000steps'
-    # model_name_or_path = 'models/tingle117M_6000steps'
+    # model_name_or_path = 'models/scealextric_linebreaks117M_6000steps'
+    model_name_or_path = 'models/tingle117M_6000steps'
     # model_name_or_path = 'models/gpt-2-large'
     # model_name_or_path = "gpt2"
-    # prompt = "After years of torture, Quinton finally learns"
     prompt = PADDING_TEXT
+    # prompt = PADDING_TEXT
     top_p = 0.9
-    length = 20
+    length = 10
     no_cuda = False
 
 
