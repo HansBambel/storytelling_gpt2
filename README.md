@@ -50,7 +50,9 @@
 	- Note: I needed to remove the `.` before the import in the `__main__.py` line 72 to make it work
 	- Note2: Converting a 345M and higher requires a config-file of the model
 
-
+#### Training ####
+Note: This was not tested whether it is working, but it requires pytorch-transformers>1.1.0
+1. `python run_lm_finetuning.py --train_data_file data\wpdump.txt --output_dir models\117M_wp --model_type gpt2 --model_name_or_path gpt2 --do_train --per_gpu_train_batch_size 4 --save_steps 1000`
 ---
 ### Using the cluster (Cluster uses SLURM) ###
 1. Get access to the cluster [Link to Sonic](https://www.ucd.ie/itservices/ourservices/researchit/computeclusters/sonicuserguide/)
